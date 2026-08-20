@@ -1,4 +1,4 @@
-PROJ_DIR=/shared/data/bowenj4/patton-data/Patton
+PROJ_DIR=/workspace/Patton
 
 SOURCE_DOMAIN=sports
 
@@ -18,7 +18,7 @@ CUDA_VISIBLE_DEVICES=5 python -m OpenLP.driver.infer  \
     --tokenizer_name $MODEL_DIR \
     --model_type $MODEL_TYPE \
     --per_device_eval_batch_size 256  \
-    --corpus_path data_dir/$SOURCE_DOMAIN/nc/documents.txt  \
+    --corpus_path $PROJ_DIR/data/$SOURCE_DOMAIN/nc/documents.txt  \
     --doc_column_names 'id,text' \
     --max_len 32 \
     --retrieve_domain $SOURCE_DOMAIN \

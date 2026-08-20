@@ -110,3 +110,17 @@ venv.bak/
 model/
 model_*/
 .DS_Store
+
+# --- 专利项目：数据与运行产物（不上传，走 scp/云存储） ---
+data/
+ckpt/
+pretrained_ckpt/
+logs/
+bm25/data_dir/
+data_pipeline/build_cache/
+data_pipeline/企业数据/
+*.db
+*.xls
+*.xlsx
+*.csv
+*.pdf

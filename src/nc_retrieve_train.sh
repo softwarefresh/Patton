@@ -1,4 +1,4 @@
-PROJ_DIR=/shared/data/bowenj4/patton-data/Patton
+PROJ_DIR=/workspace/Patton
 
 DOMAIN=sports
 PROCESSED_DIR=$PROJ_DIR/data/$DOMAIN/nc

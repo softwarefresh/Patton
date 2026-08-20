@@ -15,6 +15,7 @@ parser.add_argument('--tokenizer', type=str, required=False, default='bert-base-
 parser.add_argument('--minimum-negatives', type=int, required=False, default=1)
 parser.add_argument('--mp_chunk_size', type=int, required=False, default=1)
 parser.add_argument('--prefix', type=str, required=False, default='')
+parser.add_argument('--max_length', type=int, required=False, default=256)
 args = parser.parse_args()
 
 if args.prefix != '':
@@ -32,25 +33,25 @@ def process(item):
 
     group = {}
 
-    query = tokenizer.encode(item['q_text'], add_special_tokens=False, max_length=32, truncation=True)
+    query = tokenizer.encode(item['q_text'], add_special_tokens=False, max_length=args.max_length, truncation=True)
     q_n_text = tokenizer(
-        item['q_n_text'], add_special_tokens=False, max_length=32, truncation=True, padding=False)['input_ids']
+        item['q_n_text'], add_special_tokens=False, max_length=args.max_length, truncation=True, padding=False)['input_ids']
 
     positives = []
     for k in item['positives']:
-        positives.append({'k_text': tokenizer.encode(k['k_text'], add_special_tokens=False, max_length=32, truncation=True),
+        positives.append({'k_text': tokenizer.encode(k['k_text'], add_special_tokens=False, max_length=args.max_length, truncation=True),
                         'k_n_text': tokenizer(
-                                    k['k_n_text'], add_special_tokens=False, max_length=32, truncation=True, padding=False)['input_ids']})
+                                    k['k_n_text'], add_special_tokens=False, max_length=args.max_length, truncation=True, padding=False)['input_ids']})
 
     negatives = []
     for k in item['negatives']:
-        negatives.append({'k_text': tokenizer.encode(k['k_text'], add_special_tokens=False, max_length=32, truncation=True),
+        negatives.append({'k_text': tokenizer.encode(k['k_text'], add_special_tokens=False, max_length=args.max_length, truncation=True),
                         'k_n_text': tokenizer(
-                                    k['k_n_text'], add_special_tokens=False, max_length=32, truncation=True, padding=False)['input_ids']})
+                                    k['k_n_text'], add_special_tokens=False, max_length=args.max_length, truncation=True, padding=False)['input_ids']})
 
-    # key = tokenizer.encode(item['k_text'], add_special_tokens=False, max_length=32, truncation=True)
+    # key = tokenizer.encode(item['k_text'], add_special_tokens=False, max_length=args.max_length, truncation=True)
     # k_n_text = tokenizer(
-    #     item['k_n_text'], add_special_tokens=False, max_length=32, truncation=True, padding=False)['input_ids']
+    #     item['k_n_text'], add_special_tokens=False, max_length=args.max_length, truncation=True, padding=False)['input_ids']
 
     group['q_text'] = query
     group['q_n_text'] = q_n_text

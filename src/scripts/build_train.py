@@ -12,7 +12,7 @@ parser.add_argument('--output', type=str, required=True)
 parser.add_argument('--tokenizer', type=str, required=False, default='bert-base-uncased')
 parser.add_argument('--minimum-negatives', type=int, required=False, default=1)
 parser.add_argument('--mp_chunk_size', type=int, required=False, default=1)
-parser.add_argument('--max_length', type=int, default=32)
+parser.add_argument('--max_length', type=int, default=256)
 args = parser.parse_args()
 
 tokenizer: PreTrainedTokenizer = AutoTokenizer.from_pretrained(args.tokenizer, use_fast=True)

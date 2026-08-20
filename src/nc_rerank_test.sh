@@ -1,4 +1,4 @@
-PROJ_DIR=/shared/data/bowenj4/patton-data/Patton
+PROJ_DIR=/workspace/Patton
 
 SOURCE_DOMAIN=sports
 STEP=350

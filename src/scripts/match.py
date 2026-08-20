@@ -13,7 +13,7 @@ sub_domain = args.sub_domain
 
 label2name = {}
 label2token = {}
-with open(f'data_dir/{domain}/{sub_domain}/nc/documents.txt') as fin:
+with open(f'../data/{domain}/{sub_domain}/nc/documents.txt') as fin:
 	readin = fin.readlines()
 	for line in tqdm(readin):
 		data = line.strip().split('\t')
@@ -22,8 +22,8 @@ with open(f'data_dir/{domain}/{sub_domain}/nc/documents.txt') as fin:
 		label2name[label] = name
 		label2token[label] = set(name.split())
 
-with open(f'data_dir/{domain}/{sub_domain}/nc/node_retrieval.jsonl') as fin, \
-	 open(f'data_dir/{domain}/{sub_domain}/nc/node_reranking.jsonl', 'w') as fout:
+with open(f'../data/{domain}/{sub_domain}/nc/node_retrieval.jsonl') as fin, \
+	 open(f'../data/{domain}/{sub_domain}/nc/node_reranking.jsonl', 'w') as fout:
 	readin = fin.readlines()
 	for line in tqdm(readin):
 		data = json.loads(line)
@@ -52,10 +52,10 @@ with open(f'data_dir/{domain}/{sub_domain}/nc/node_retrieval.jsonl') as fin, \
 
 # split the whole data into train/val/test in 8:1:1.
 
-with open(f'data_dir/{domain}/{sub_domain}/nc/node_reranking.jsonl') as f,  \
-	open(f'data_dir/{domain}/{sub_domain}/nc/train.rerank.text.jsonl', 'w') as fout1, \
-		open(f'data_dir/{domain}/{sub_domain}/nc/val.rerank.text.jsonl', 'w') as fout2, \
-			open(f'data_dir/{domain}/{sub_domain}/nc/test.rerank.text.jsonl', 'w') as fout3:
+with open(f'../data/{domain}/{sub_domain}/nc/node_reranking.jsonl') as f,  \
+	open(f'../data/{domain}/{sub_domain}/nc/train.rerank.text.jsonl', 'w') as fout1, \
+		open(f'../data/{domain}/{sub_domain}/nc/val.rerank.text.jsonl', 'w') as fout2, \
+			open(f'../data/{domain}/{sub_domain}/nc/test.rerank.text.jsonl', 'w') as fout3:
     readin = f.readlines()
     total_len = len(readin)
     for line in tqdm(readin[:int(0.8*total_len)]):

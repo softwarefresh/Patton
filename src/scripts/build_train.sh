@@ -1,4 +1,4 @@
-PROCESSED_DIR="data_dir/amazon/sports"
+PROCESSED_DIR="../data/amazon/sports"
 
 echo "build train for pretrain..."
 python build_train.py \

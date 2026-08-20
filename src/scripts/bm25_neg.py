@@ -26,7 +26,7 @@ doc_dict = {}
 doc_list = []
 doc_2id_dict = {}
 
-with open(os.path.join(f'data_dir/{args.domain}/{args.sub_dataset}/nc', 'documents.txt')) as f:
+with open(os.path.join(f'../data/{args.domain}/{args.sub_dataset}/nc', 'documents.txt')) as f:
     readin = f.readlines()
     for line in tqdm(readin):
         tmp = line.strip().split('\t')
@@ -47,7 +47,7 @@ query_dict = {}
 data = {}
 
 qid = 0
-with open(f'data_dir/{args.domain}/{args.sub_dataset}/nc/node_classification.jsonl') as f:
+with open(f'../data/{args.domain}/{args.sub_dataset}/nc/node_classification.jsonl') as f:
     readin = f.readlines()
     for line in tqdm(readin):
         tmp = json.loads(line)
@@ -63,7 +63,7 @@ random.shuffle(doc_list)
 doc_list_iter = iter(doc_list)
 
 # add bm25 negative
-with open(f'data_dir/{args.domain}/{args.sub_dataset}/nc/bm25_all_trec') as f:
+with open(f'../data/{args.domain}/{args.sub_dataset}/nc/bm25_all_trec') as f:
     readin = f.readlines()
     for line in tqdm(readin):
         qid, _, docid, rank, _, _ = line.strip().split()
@@ -103,7 +103,7 @@ for k in tqdm(data):
     data[k]['negative_ctxs'] = [doc_dict[str(lid)]['text'] for lid in data[k]['negative_ctxs'] if str(lid) in doc_dict]
 
 # save
-with open(f'data_dir/{args.domain}/{args.sub_dataset}/nc/node_retrieval.jsonl', 'w') as fout:
+with open(f'../data/{args.domain}/{args.sub_dataset}/nc/node_retrieval.jsonl', 'w') as fout:
     for d in data:
         fout.write(json.dumps(data[d])+'\n')
 
@@ -111,7 +111,7 @@ with open(f'data_dir/{args.domain}/{args.sub_dataset}/nc/node_retrieval.jsonl', 
 # split the whole data into train/val/test in 8:1:1.
 docid = 0
 
-with open(f'data_dir/{args.domain}/{args.sub_dataset}/nc/node_retrieval.jsonl') as f, open(f'data_dir/{args.domain}/{args.sub_dataset}/nc/train.text.jsonl', 'w') as fout1, open(f'data_dir/{args.domain}/{args.sub_dataset}/nc/val.text.jsonl', 'w') as fout2, open(f'data_dir/{args.domain}/{args.sub_dataset}/nc/test.truth.trec', 'w') as fout3, open(f'data_dir/{args.domain}/{args.sub_dataset}/nc/test.node.text.jsonl', 'w') as fout4, open(f'data_dir/{args.domain}/{args.sub_dataset}/nc/test.node.text.tsv', 'w') as fout5:
+with open(f'../data/{args.domain}/{args.sub_dataset}/nc/node_retrieval.jsonl') as f, open(f'../data/{args.domain}/{args.sub_dataset}/nc/train.text.jsonl', 'w') as fout1, open(f'../data/{args.domain}/{args.sub_dataset}/nc/val.text.jsonl', 'w') as fout2, open(f'../data/{args.domain}/{args.sub_dataset}/nc/test.truth.trec', 'w') as fout3, open(f'../data/{args.domain}/{args.sub_dataset}/nc/test.node.text.jsonl', 'w') as fout4, open(f'../data/{args.domain}/{args.sub_dataset}/nc/test.node.text.tsv', 'w') as fout5:
     readin = f.readlines()
     total_len = len(readin)
     for line in tqdm(readin[:int(0.8*total_len)]):

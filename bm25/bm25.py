@@ -28,7 +28,7 @@ else:
     res_file = 'bm25_test_trec'
 
 # read corpus
-with open(f'data_dir/{args.domain}/{args.dataset}/nc/documents.json') as f:
+with open(f'../data/{args.domain}/{args.dataset}/nc/documents.json') as f:
     corpus = json.load(f)
 corpus_dict = {doc['id']:doc['contents'] for doc in corpus}
 corpus_dict_rev = {corpus_dict[docid]:docid for docid in corpus_dict}
@@ -40,7 +40,7 @@ bm25 = BM25Okapi(tokenized_corpus)
 
 # read query
 query = {}
-with open(f'data_dir/{args.domain}/{args.dataset}/nc/{query_file}') as f:
+with open(f'../data/{args.domain}/{args.dataset}/nc/{query_file}') as f:
     readin = f.readlines()
     for line in readin:
         tmp = line.strip().split('\t')
@@ -48,7 +48,7 @@ with open(f'data_dir/{args.domain}/{args.dataset}/nc/{query_file}') as f:
 
 # search
 res = {}
-with open(f'data_dir/{args.domain}/{args.dataset}/nc/{res_file}', 'w') as fout:
+with open(f'../data/{args.domain}/{args.dataset}/nc/{res_file}', 'w') as fout:
     for qid in tqdm(query):
         # tmp_res = [corpus_dict_rev[doc] for doc in bm25.get_top_n(query[qid], corpus, n=args.k)]
         doc_scores = bm25.get_scores(query[qid])
