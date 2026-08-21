@@ -53,9 +53,27 @@ scp  -P 23 data_pipeline/g_company_info.csv root@<外网IP>:/root/Patton/data_pi
 
 > 也可用 FileZilla / XFTP（SFTP，端口 23，root），拖拽体验与 JupyterLab 类似；结果回传用 `scp -rP 23 root@<外网IP>:<服务器路径> <本地路径>`。
 
-## 1. 环境安装（先换源）
+## 1. conda 环境配置
 
-### 1.1 conda 换源（清华源）
+环境整体：**conda 建 `patton` 环境（Python 3.10）→ torch 1.13.1+cu117 + transformers 4.21.1**。下面是完整步骤。
+
+### 1.1 确认 / 安装 Miniconda
+
+```bash
+conda --version    # 有输出说明已装，直接跳到 1.2
+```
+
+未安装则装 Miniconda（清华镜像，装到 `$HOME/miniconda3`）：
+
+```bash
+wget https://mirrors.tuna.tsinghua.edu.cn/anaconda/miniconda/Miniconda3-latest-Linux-x86_64.sh
+bash Miniconda3-latest-Linux-x86_64.sh -b -p $HOME/miniconda3
+$HOME/miniconda3/bin/conda init bash
+source ~/.bashrc          # 让 conda 命令在当前终端生效
+conda --version           # 验证
+```
+
+### 1.2 conda 换源（清华源）
 
 写入 `~/.condarc`：
 
@@ -75,22 +93,53 @@ EOF
 conda config --show channels   # 验证是否生效
 ```
 
-### 1.2 pip 换源（清华源）
+### 1.3 pip 换源（清华源）
 
 ```bash
 python -m pip install --upgrade pip
 pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple
 ```
 
-### 1.3 装环境
+### 1.4 创建并激活环境
 
 ```bash
-bash setup.sh        # conda python3.10 + torch 1.13.1+cu117 + transformers 4.21.1
+conda create -n patton python=3.10 -y
+conda activate patton
+python --version            # 应显示 Python 3.10.x
 ```
 
-> 注意：`setup.sh` 里 torch 用 `pip install torch==1.13.1+cu117 -f https://download.pytorch.org/whl/torch_stable.html`。
-> 清华 pip 源**不含** `+cu117` 变体 wheel，这一步仍走官方 `download.pytorch.org`（平台学术加速通常可覆盖）。
-> 若极慢，可改用 conda 装 pytorch（上一步已配清华 pytorch 云镜像）：
+> `conda activate patton` 每次新开终端都要执行一次；想自动激活可把这行加进 `~/.bashrc`。
+
+### 1.5 装依赖（二选一）
+
+**方式 A（一键，推荐）**：
+
+```bash
+bash setup.sh
+```
+
+**方式 B（手动，逐步）**：
+
+```bash
+pip install torch==1.13.1+cu117 torchvision==0.14.1+cu117 \
+    -f https://download.pytorch.org/whl/torch_stable.html
+pip install transformers==4.21.1 datasets==2.11.0 numpy==1.23.5 \
+    scikit-learn==1.2.2 scipy==1.10.1 tensorboard==2.12.1 \
+    sentencepiece==0.1.97 rank_bm25==0.2.2 ipython tqdm
+```
+
+### 1.6 验证
+
+```bash
+python -c "import torch; print('torch', torch.__version__, 'cuda', torch.cuda.is_available())"
+python -c "import transformers; print('transformers', transformers.__version__)"
+# 期望：torch 1.13.1+cu117 cuda True / transformers 4.21.1
+```
+
+> 关于 torch 版本：
+> - `1.13.1+cu117` 是给 30 系卡（sm_86，如 3080 Ti）用的；原 repo 钉的 `torch==1.8.0` 对 30 系支持差，**不要用**。
+> - `+cu117` 变体 wheel 在清华 pip 源里没有，仍从官方 `download.pytorch.org` 下载（平台学术加速通常能覆盖）。
+> - 若下载极慢，改用 conda 装（1.2 已配好清华 pytorch 云镜像）：
 > ```bash
 > conda install pytorch==1.13.1 torchvision==0.14.1 cudatoolkit=11.7 -c pytorch -c conda-forge
 > ```
