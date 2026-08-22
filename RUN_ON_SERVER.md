@@ -22,7 +22,7 @@
 
 **代码 → `git clone` 到 `/workspace/Patton`**（仓库已在 GitHub，代码量小，平台对 GitHub/HuggingFace 有学术加速）。
 
-> **为什么是 `/workspace/Patton`**：所有 `*_patent.sh` / `build_patent.sh` 已写死 `PROJ_DIR=/workspace/Patton`，数据也引用 `$PROJ_DIR/data|ckpt|data_pipeline`，放这里**零改动直接跑**。
+> **为什么是 `/workspace/Patton`**：所有 `*_patent.sh` / `build_patent.sh` 已写死 `PROJ_DIR=/workspace/Patton`，数据也引用 `$PROJ_DIR/data|ckpt`，放这里**零改动直接跑**。
 
 ```bash
 # 在服务器上执行（-b patent 直接拿专利分支；不加 -b 默认拉 main，是原版英文代码）
@@ -47,27 +47,23 @@ cd /workspace/Patton
 > sed -i 's#PROJ_DIR=/workspace/Patton#PROJ_DIR=/cloud/Patton#' src/*_patent.sh src/build_patent.sh
 > ```
 
-**数据 → 不走 git，用拖拽上传（JupyterLab）**（`data/patent/` 51GB、`g_domain.db` 7.2GB 太大且未纳入 git）。
+**数据 → 不走 git，用拖拽上传（JupyterLab）**（`data/patent/` 51GB 太大且未纳入 git）。
 
 先 `git clone` 代码，再在控制台「登录 → JupyterLab」打开实例，把数据**拖进仓库对应目录**：
 
 ```
 Patton/                            ← git clone 出来的仓库根目录
 ├── data/patent/nc/、pretrain/     ← 拖入 训练输入（51GB）
-├── ckpt/chinese-roberta-wwm-ext/  ← 拖入 中文底座（393MB）
-└── data_pipeline/                 ← 拖入 g_domain.db + g_company_{pool,info}.csv
+└── ckpt/chinese-roberta-wwm-ext/  ← 拖入 中文底座（393MB）
 ```
 
-> 拖拽大文件夹（51GB）较慢且**断点续传不可靠**，传完用 `du -sh data ckpt data_pipeline/g_domain.db` 核对体积；中途失败就改用**云存储**（控制台上传 → 挂载实例，可断点续传）。
+> 拖拽大文件夹（51GB）较慢且**断点续传不可靠**，传完用 `du -sh data ckpt` 核对体积；中途失败就改用**云存储**（控制台上传 → 挂载实例，可断点续传）。
 
 备用方式（scp，本地执行；大写 `-P` + 端口 `23` + `root`）：
 
 ```bash
 scp -rP 23 data/patent                      root@<外网IP>:/root/Patton/data/
 scp -rP 23 ckpt/chinese-roberta-wwm-ext     root@<外网IP>:/root/Patton/ckpt/
-scp  -P 23 data_pipeline/g_domain.db        root@<外网IP>:/root/Patton/data_pipeline/
-scp  -P 23 data_pipeline/g_company_pool.csv root@<外网IP>:/root/Patton/data_pipeline/
-scp  -P 23 data_pipeline/g_company_info.csv root@<外网IP>:/root/Patton/data_pipeline/
 ```
 
 > 也可用 FileZilla / XFTP（SFTP，端口 23，root），拖拽体验与 JupyterLab 类似；结果回传用 `scp -rP 23 root@<外网IP>:<服务器路径> <本地路径>`。
@@ -167,11 +163,12 @@ python -c "import transformers; print('transformers', transformers.__version__)"
 
 | 内容 | 路径（本地） | 上传方式 | 说明 |
 |---|---|---|---|
-| 代码 | 整个 repo | **git clone** | 88 个文件，体积小 |
-| 工作库 | `data_pipeline/g_domain.db`（7.2GB）| 拖拽上传（JupyterLab） | 已重建、已建索引、quick_check ok |
-| 中文底座 | `ckpt/chinese-roberta-wwm-ext/`（393MB）| 拖拽上传（JupyterLab） | hfl/chinese-roberta-wwm-ext |
+| 代码 | 整个 repo | **git clone** | 含 `data_pipeline/*.py` 脚本，clone 即有 |
 | 训练输入 | `data/patent/nc/`、`data/patent/pretrain/`（51GB）| 拖拽上传（JupyterLab） | 本地已组装好 |
-| 候选池 | `data_pipeline/g_company_{pool,info}.csv` | 拖拽上传（JupyterLab） | 备查 |
+| 中文底座 | `ckpt/chinese-roberta-wwm-ext/`（393MB）| 拖拽上传（JupyterLab） | hfl/chinese-roberta-wwm-ext |
+
+> **不需要上传**（本地建数据的中间产物，训练脚本不读它们）：
+> `data_pipeline/g_domain.db`、`patents.db`、`g_company_*.csv`、`build_cache/`、`企业数据/` —— 留本地即可。
 
 > 服务器上只训练、不建数据。训练数据（tokenize 后）在服务器上由 `src/build_patent.sh` 生成。
 
