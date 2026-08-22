@@ -23,10 +23,15 @@
 **代码 → `git clone`**（仓库已在 GitHub，代码量小，平台对 GitHub/HuggingFace 有学术加速）：
 
 ```bash
-# 在服务器上执行
-git clone https://github.com/softwarefresh/Patton.git
+# 在服务器上执行（-b patent 直接拿专利分支；不加 -b 默认拉 main，是原版英文代码）
+git clone -b patent https://github.com/softwarefresh/Patton.git
 cd Patton
 ```
+
+> 若已用 `git clone https://github.com/softwarefresh/Patton.git` 拉过，切分支即可：
+> ```bash
+> cd Patton && git fetch origin && git checkout patent
+> ```
 
 **数据 → 不走 git，用拖拽上传（JupyterLab）**（`data/patent/` 51GB、`g_domain.db` 7.2GB 太大且未纳入 git）。
 
