@@ -31,6 +31,12 @@ git clone -b patent https://github.com/softwarefresh/Patton.git /workspace/Patto
 cd /workspace/Patton
 ```
 
+> **若报 `git: command not found`**（部分基础镜像未预装 git），先装：
+> ```bash
+> apt-get update && apt-get install -y git        # root 首选
+> conda install -y git                            # apt 不可用时的替代（仅当前 env 生效）
+> ```
+
 > 若已 clone 过（默认 main），切分支即可：
 > ```bash
 > cd /workspace/Patton && git fetch origin && git checkout patent
