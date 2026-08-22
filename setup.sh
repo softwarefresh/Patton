@@ -8,7 +8,8 @@ set -e
 
 # ---- 用 conda 建 Python 3.10 环境 (也可直接用系统 python3.10)
 if command -v conda &>/dev/null; then
-    conda create -n patton python=3.10 -y
+    # 环境已存在则跳过创建（幂等，可重复运行）
+    conda env list | grep -qw patton || conda create -n patton python=3.10 -y
     # 激活环境：先 source conda.sh 定义 shell 函数，否则脚本里 conda activate 可能失效
     source "$(conda info --base)/etc/profile.d/conda.sh"
     conda activate patton
