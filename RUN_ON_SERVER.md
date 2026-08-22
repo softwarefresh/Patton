@@ -20,17 +20,25 @@
 
 ### 0.2 代码用 git，数据拖拽上传
 
-**代码 → `git clone`**（仓库已在 GitHub，代码量小，平台对 GitHub/HuggingFace 有学术加速）：
+**代码 → `git clone` 到 `/workspace/Patton`**（仓库已在 GitHub，代码量小，平台对 GitHub/HuggingFace 有学术加速）。
+
+> **为什么是 `/workspace/Patton`**：所有 `*_patent.sh` / `build_patent.sh` 已写死 `PROJ_DIR=/workspace/Patton`，数据也引用 `$PROJ_DIR/data|ckpt|data_pipeline`，放这里**零改动直接跑**。
 
 ```bash
 # 在服务器上执行（-b patent 直接拿专利分支；不加 -b 默认拉 main，是原版英文代码）
-git clone -b patent https://github.com/softwarefresh/Patton.git
-cd Patton
+mkdir -p /workspace
+git clone -b patent https://github.com/softwarefresh/Patton.git /workspace/Patton
+cd /workspace/Patton
 ```
 
-> 若已用 `git clone https://github.com/softwarefresh/Patton.git` 拉过，切分支即可：
+> 若已 clone 过（默认 main），切分支即可：
 > ```bash
-> cd Patton && git fetch origin && git checkout patent
+> cd /workspace/Patton && git fetch origin && git checkout patent
+> ```
+
+> **想放别处（如数据盘）**：进实例先 `ls /`、`df -h` 确认挂载点——容器实例默认数据盘挂载 `/cloud`、虚机实例 `/data`；`/workspace` 若在系统盘，关机 7 天释放会清空。把 repo 放到数据盘后，一键改脚本路径：
+> ```bash
+> sed -i 's#PROJ_DIR=/workspace/Patton#PROJ_DIR=/cloud/Patton#' src/*_patent.sh src/build_patent.sh
 > ```
 
 **数据 → 不走 git，用拖拽上传（JupyterLab）**（`data/patent/` 51GB、`g_domain.db` 7.2GB 太大且未纳入 git）。
