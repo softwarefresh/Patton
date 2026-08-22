@@ -90,27 +90,25 @@ conda --version           # 验证
 
 ### 1.2 conda 换源（清华源）
 
-写入 `~/.condarc`：
+逐行写入 `~/.condarc`（用短命令，避免 heredoc / 长命令被终端换行弄坏）：
 
 ```bash
-cat <<'EOF' > ~/.condarc
-channels:
-  - defaults
-show_channel_urls: true
-default_channels:
-  - https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/main
-  - https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/r
-  - https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/msys2
-custom_channels:
-  conda-forge: https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud
-  pytorch: https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud
-EOF
-conda config --show channels   # 验证是否生效（确认没有 free）
+echo 'channels:' > ~/.condarc
+echo '  - defaults' >> ~/.condarc
+echo 'show_channel_urls: true' >> ~/.condarc
+echo 'default_channels:' >> ~/.condarc
+echo '  - https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/main' >> ~/.condarc
+echo 'custom_channels:' >> ~/.condarc
+echo '  conda-forge: https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud' >> ~/.condarc
+echo '  pytorch: https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud' >> ~/.condarc
 ```
 
-> **若报 `UnavailableInvalidChannel: HTTP 404 NOT FOUND for channel anaconda/pkgs/free`**：
-> 基础镜像自带一个已下线的清华 `pkgs/free` 通道。覆盖上面的 `~/.condarc` 后一般即消失；
-> 若 `conda config --show channels` 仍含 `free`，跑 `conda config --show-sources` 找到来源文件，删掉其中的 `free` 行即可。
+> 只留 `pkgs/main`：清华源已下线 `pkgs/free` 和 `pkgs/r`（会 404），`pkgs/msys2` 是 Windows 专用、Linux 用不到。
+> 验证：`conda config --show default_channels` 应只显示 `pkgs/main`。
+
+> **若报 `UnavailableInvalidChannel: HTTP 404 ... for channel anaconda/pkgs/free` 或 `.../pkgs/r`**：
+> 就是清华源下线了这两个通道、而旧配置还带着它们。用上面只有 `pkgs/main` 的配置即可。
+> 若基础镜像把 `free`/`r` 写进了系统级配置（`conda config --show-sources` 能看到来源文件），需到对应文件删掉那几行。
 
 ### 1.3 pip 换源（清华源）
 
