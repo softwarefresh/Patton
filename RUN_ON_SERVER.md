@@ -105,8 +105,12 @@ custom_channels:
   conda-forge: https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud
   pytorch: https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud
 EOF
-conda config --show channels   # 验证是否生效
+conda config --show channels   # 验证是否生效（确认没有 free）
 ```
+
+> **若报 `UnavailableInvalidChannel: HTTP 404 NOT FOUND for channel anaconda/pkgs/free`**：
+> 基础镜像自带一个已下线的清华 `pkgs/free` 通道。覆盖上面的 `~/.condarc` 后一般即消失；
+> 若 `conda config --show channels` 仍含 `free`，跑 `conda config --show-sources` 找到来源文件，删掉其中的 `free` 行即可。
 
 ### 1.3 pip 换源（清华源）
 
