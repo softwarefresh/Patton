@@ -13,14 +13,16 @@ python build_train.py \
     --input_dir $PRE_DIR \
     --output $PRE_DIR \
     --tokenizer $TOKENIZER \
-    --max_length 256
+    --max_length 256 \
+    --mp_workers 8
 
 # 检索
 python build_train_neg.py \
     --input_dir $NC_DIR \
     --output $NC_DIR \
     --tokenizer $TOKENIZER \
-    --max_length 256
+    --max_length 256 \
+    --mp_workers 8
 
 # 重排(训练/验证)
 python build_train_neg.py \
@@ -28,6 +30,7 @@ python build_train_neg.py \
     --output $NC_DIR \
     --tokenizer $TOKENIZER \
     --max_length 256 \
+    --mp_workers 8 \
     --prefix rerank.32
 
 # 重排(测试, 10000 条查询)
@@ -36,4 +39,5 @@ python build_train_neg.py \
     --output $NC_DIR \
     --tokenizer $TOKENIZER \
     --max_length 256 \
+    --mp_workers 8 \
     --prefix rerank.10000
