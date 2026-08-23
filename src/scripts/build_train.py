@@ -12,6 +12,7 @@ parser.add_argument('--output', type=str, required=True)
 parser.add_argument('--tokenizer', type=str, required=False, default='bert-base-uncased')
 parser.add_argument('--minimum-negatives', type=int, required=False, default=1)
 parser.add_argument('--mp_chunk_size', type=int, required=False, default=1)
+parser.add_argument('--mp_workers', type=int, required=False, default=4)
 parser.add_argument('--max_length', type=int, default=256)
 args = parser.parse_args()
 
@@ -43,50 +44,23 @@ def process(item):
 
 
 # multiprocessing mode
-with open(os.path.join(args.output, 'train.jsonl'), 'w') as f:
-    try:
-        data = json.load(open(os.path.join(args.input_dir, 'train.text.jsonl')))
-    except:
-        data = []
-        with open(os.path.join(args.input_dir, 'train.text.jsonl')) as fin:
-            readin = fin.readlines()
-            for line in tqdm(readin):
-                data.append(json.loads(line))
-        pbar = tqdm(data)
-        with Pool() as p:
-            for x in p.imap(process, pbar, chunksize=args.mp_chunk_size):
-                if x != 0:
-                    f.write(x + '\n')
+# 流式逐行处理 + 限制 worker 数，避免把大文件整体载入内存被 OOM kill
+def iter_lines(path):
+    with open(path) as fin:
+        for line in fin:
+            yield json.loads(line)
 
-with open(os.path.join(args.output, 'val.jsonl'), 'w') as f:
-    try:
-        data = json.load(open(os.path.join(args.input_dir, 'val.text.jsonl')))
-    except:
-        data = []
-        with open(os.path.join(args.input_dir, 'val.text.jsonl')) as fin:
-            readin = fin.readlines()
-            for line in tqdm(readin):
-                data.append(json.loads(line))
-        pbar = tqdm(data)
-        with Pool() as p:
-            for x in p.imap(process, pbar, chunksize=args.mp_chunk_size):
-                if x != 0:
-                    f.write(x + '\n')
 
-if not os.path.exists(os.path.join(args.input_dir, 'test.text.jsonl')):
-    exit()
-
-with open(os.path.join(args.output, 'test.jsonl'), 'w') as f:
-    try:
-        data = json.load(open(os.path.join(args.input_dir, 'test.text.jsonl')))
-    except:
-        data = []
-        with open(os.path.join(args.input_dir, 'test.text.jsonl')) as fin:
-            readin = fin.readlines()
-            for line in tqdm(readin):
-                data.append(json.loads(line))
-        pbar = tqdm(data)
-        with Pool() as p:
-            for x in p.imap(process, pbar, chunksize=args.mp_chunk_size):
-                if x != 0:
-                    f.write(x + '\n')
+for split in ['train', 'val', 'test']:
+    in_file = os.path.join(args.input_dir, f'{split}.text.jsonl')
+    if not os.path.exists(in_file):
+        continue
+    out_file = os.path.join(args.output, f'{split}.jsonl')
+    pool = Pool(processes=args.mp_workers)
+    with open(out_file, 'w') as f:
+        pbar = tqdm(iter_lines(in_file))
+        for x in pool.imap(process, pbar, chunksize=args.mp_chunk_size):
+            if x != 0:
+                f.write(x + '\n')
+    pool.close()
+    pool.join()

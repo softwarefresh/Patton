@@ -14,6 +14,7 @@ parser.add_argument('--output', type=str, required=True)
 parser.add_argument('--tokenizer', type=str, required=False, default='bert-base-uncased')
 parser.add_argument('--minimum-negatives', type=int, required=False, default=1)
 parser.add_argument('--mp_chunk_size', type=int, required=False, default=1)
+parser.add_argument('--mp_workers', type=int, required=False, default=4)
 parser.add_argument('--prefix', type=str, required=False, default='')
 parser.add_argument('--max_length', type=int, required=False, default=256)
 args = parser.parse_args()
@@ -62,23 +63,23 @@ def process(item):
 
 
 # multiprocessing mode
-# 每个 split 独立判断是否存在：支持"只 tokenize test"的场景（如 rerank.10000 只有测试集）
+# 流式逐行处理 + 限制 worker 数，避免把大文件整体载入内存被 OOM kill
+def iter_lines(path):
+    with open(path) as fin:
+        for line in fin:
+            yield json.loads(line)
+
+
 for split in ['train', 'val', 'test']:
     in_file = os.path.join(args.input_dir, f'{split}{args.prefix}.text.jsonl')
     if not os.path.exists(in_file):
         continue
     out_file = os.path.join(args.output, f'{split}{args.prefix}.jsonl')
+    pool = Pool(processes=args.mp_workers)
     with open(out_file, 'w') as f:
-        try:
-            data = json.load(open(in_file))
-        except:
-            data = []
-            with open(in_file) as fin:
-                readin = fin.readlines()
-                for line in tqdm(readin):
-                    data.append(json.loads(line))
-        pbar = tqdm(data)
-        with Pool() as p:
-            for x in p.imap(process, pbar, chunksize=args.mp_chunk_size):
-                if x != 0:
-                    f.write(x + '\n')
+        pbar = tqdm(iter_lines(in_file))
+        for x in pool.imap(process, pbar, chunksize=args.mp_chunk_size):
+            if x != 0:
+                f.write(x + '\n')
+    pool.close()
+    pool.join()
