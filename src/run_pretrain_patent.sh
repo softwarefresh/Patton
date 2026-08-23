@@ -1,6 +1,7 @@
 # 专利预训练: 中文底座 -> 专利语料继续预训练 (MLM + 对比)
 # 单卡 3080 Ti (12GB): fp16 + grad_cache + max_len 256 + batch 4×累积32
 PROJ_DIR=/workspace/Patton
+cd $PROJ_DIR/src
 
 PROCESSED_DIR=$PROJ_DIR/data/patent/pretrain
 LOG_DIR=$PROJ_DIR/logs/patent/pretrain

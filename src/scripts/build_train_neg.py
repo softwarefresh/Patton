@@ -62,48 +62,21 @@ def process(item):
 
 
 # multiprocessing mode
-with open(os.path.join(args.output, f'train{args.prefix}.jsonl'), 'w') as f:
-    try:
-        data = json.load(open(os.path.join(args.input_dir, f'train{args.prefix}.text.jsonl')))
-    except:
-        data = []
-        with open(os.path.join(args.input_dir, f'train{args.prefix}.text.jsonl')) as fin:
-            readin = fin.readlines()
-            for line in tqdm(readin):
-                data.append(json.loads(line))
-        pbar = tqdm(data)
-        with Pool() as p:
-            for x in p.imap(process, pbar, chunksize=args.mp_chunk_size):
-                if x != 0:
-                    f.write(x + '\n')
-
-with open(os.path.join(args.output, f'val{args.prefix}.jsonl'), 'w') as f:
-    try:
-        data = json.load(open(os.path.join(args.input_dir, f'val{args.prefix}.text.jsonl')))
-    except:
-        data = []
-        with open(os.path.join(args.input_dir, f'val{args.prefix}.text.jsonl')) as fin:
-            readin = fin.readlines()
-            for line in tqdm(readin):
-                data.append(json.loads(line))
-        pbar = tqdm(data)
-        with Pool() as p:
-            for x in p.imap(process, pbar, chunksize=args.mp_chunk_size):
-                if x != 0:
-                    f.write(x + '\n')
-
-if not os.path.exists(os.path.join(args.input_dir, f'test{args.prefix}.text.jsonl')):
-    exit()
-
-with open(os.path.join(args.output, f'test{args.prefix}.jsonl'), 'w') as f:
-    try:
-        data = json.load(open(os.path.join(args.input_dir, f'test{args.prefix}.text.jsonl')))
-    except:
-        data = []
-        with open(os.path.join(args.input_dir, f'test{args.prefix}.text.jsonl')) as fin:
-            readin = fin.readlines()
-            for line in tqdm(readin):
-                data.append(json.loads(line))
+# 每个 split 独立判断是否存在：支持"只 tokenize test"的场景（如 rerank.10000 只有测试集）
+for split in ['train', 'val', 'test']:
+    in_file = os.path.join(args.input_dir, f'{split}{args.prefix}.text.jsonl')
+    if not os.path.exists(in_file):
+        continue
+    out_file = os.path.join(args.output, f'{split}{args.prefix}.jsonl')
+    with open(out_file, 'w') as f:
+        try:
+            data = json.load(open(in_file))
+        except:
+            data = []
+            with open(in_file) as fin:
+                readin = fin.readlines()
+                for line in tqdm(readin):
+                    data.append(json.loads(line))
         pbar = tqdm(data)
         with Pool() as p:
             for x in p.imap(process, pbar, chunksize=args.mp_chunk_size):

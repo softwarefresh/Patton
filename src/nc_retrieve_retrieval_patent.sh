@@ -1,5 +1,6 @@
 # 检索: 用测试查询搜索, 算 recall 指标
 PROJ_DIR=/workspace/Patton
+cd $PROJ_DIR/src
 
 MODEL_TYPE=graphformer
 LR=1e-5

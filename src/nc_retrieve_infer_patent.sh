@@ -1,5 +1,6 @@
 # 检索: 对候选企业语料建稠密向量索引 (documents.txt)
 PROJ_DIR=/workspace/Patton
+cd $PROJ_DIR/src
 
 MODEL_TYPE=graphformer
 LR=1e-5

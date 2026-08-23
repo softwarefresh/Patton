@@ -1,6 +1,7 @@
 # 检索阶段训练 (专利 -> 企业)
 # 底座: 预训练后的 patton checkpoint; 若预训练未完成先用 chinese-roberta-wwm-ext 跑通
 PROJ_DIR=/workspace/Patton
+cd $PROJ_DIR/src
 
 PROCESSED_DIR=$PROJ_DIR/data/patent/nc
 LOG_DIR=$PROJ_DIR/logs/patent/nc_retrieval
@@ -25,7 +26,7 @@ CUDA_VISIBLE_DEVICES=0 python -m OpenLP.driver.train_neg  \
     --save_steps 5000  \
     --eval_steps 5000  \
     --logging_steps 500 \
-    --train_path $PROCESSED_DIR/train.16.jsonl  \
+    --train_path $PROCESSED_DIR/train.jsonl  \
     --eval_path $PROCESSED_DIR/val.jsonl  \
     --fp16  \
     --grad_cache  \

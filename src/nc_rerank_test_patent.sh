@@ -1,5 +1,6 @@
 # 重排阶段测试 (把 $STEP 改成最佳 checkpoint 步数)
 PROJ_DIR=/workspace/Patton
+cd $PROJ_DIR/src
 
 MODEL_TYPE=graphformer
 LR=1e-5

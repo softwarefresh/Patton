@@ -174,15 +174,23 @@ python -c "import transformers; print('transformers', transformers.__version__)"
 
 > 服务器上只训练、不建数据。训练数据（tokenize 后）在服务器上由 `src/build_patent.sh` 生成。
 
-## 3. Tokenize（CPU 可跑）
+## 3. Tokenize（CPU 可跑，先把中文文本 tokenize 成训练用的 id 格式）
 
 ```bash
-bash src/build_patent.sh   # 生成 train.jsonl / train.16.jsonl / train.rerank.32.jsonl / test.rerank.10000.jsonl
+conda activate patton
+cd /workspace/Patton
+bash src/build_patent.sh
 ```
+
+生成（对应目录下、与 `.text.jsonl` 同名去 `.text`）：
+`pretrain/train.jsonl`、`pretrain/val.jsonl`、`nc/train.jsonl`、`nc/val.jsonl`、
+`nc/train.rerank.32.jsonl`、`nc/val.rerank.32.jsonl`、`nc/test.rerank.10000.jsonl`
 
 ## 4. 训练顺序
 
 ```bash
+conda activate patton        # 每次新终端先激活（或已写进 ~/.bashrc）
+
 # ① GPU 冒烟（可选但建议）：先跑 200 步确认显存/速度
 # ② 预训练（MLM + 对比，中文底座 → 专利语料）
 bash src/run_pretrain_patent.sh
@@ -198,6 +206,8 @@ bash src/nc_rerank_train_patent.sh
 # ⑥ 重排测试（把 STEP 改成最佳 checkpoint 步数）
 bash src/nc_rerank_test_patent.sh
 ```
+
+> 脚本内部会 `cd $PROJ_DIR/src`，从任何目录执行都行。
 
 ## 5. 关键配置（3080 Ti 12GB 适配）
 

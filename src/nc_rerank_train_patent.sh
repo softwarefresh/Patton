@@ -1,5 +1,6 @@
 # 重排阶段训练
 PROJ_DIR=/workspace/Patton
+cd $PROJ_DIR/src
 
 PROCESSED_DIR=$PROJ_DIR/data/patent/nc
 LOG_DIR=$PROJ_DIR/logs/patent/nc_rerank
