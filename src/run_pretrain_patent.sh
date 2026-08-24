@@ -1,5 +1,6 @@
 # 专利预训练: 中文底座 -> 专利语料继续预训练 (MLM + 对比)
-# 单卡 3080 Ti (12GB): fp16 + grad_cache + max_len 256 + batch 4×累积32
+# 单卡 3080 Ti (12GB): fp16 + max_len 256 + batch 4×累积32
+# 不用 grad_cache：GradCache 路径下 MLM 损失会被静默丢弃，预训练必须完整走对比+MLM
 PROJ_DIR=/workspace/Patton
 cd $PROJ_DIR/src
 
@@ -25,7 +26,6 @@ python -m OpenLP.driver.patton_pretrain  \
     --train_path $PROCESSED_DIR/train.jsonl  \
     --eval_path $PROCESSED_DIR/val.jsonl  \
     --fp16  \
-    --grad_cache  \
     --per_device_train_batch_size 4  \
     --per_device_eval_batch_size 8 \
     --gradient_accumulation_steps 32 \

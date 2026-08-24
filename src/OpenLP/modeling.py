@@ -143,8 +143,8 @@ class DenseModel(nn.Module):
 
         if q_reps is None or p_reps is None:
             return DenseOutput(
-                q_reps=q_reps.contiguous(),
-                p_reps=p_reps.contiguous()
+                q_reps=q_reps.contiguous() if q_reps is not None else None,
+                p_reps=p_reps.contiguous() if p_reps is not None else None
             )
 
         if self.train_args.negatives_x_device:
@@ -413,8 +413,8 @@ class DenseLMModel(DenseModel):
 
         if q_reps is None or p_reps is None:
             return DenseOutput(
-                q_reps=q_reps.contiguous(),
-                p_reps=p_reps.contiguous()
+                q_reps=q_reps.contiguous() if q_reps is not None else None,
+                p_reps=p_reps.contiguous() if p_reps is not None else None
             )
 
         if self.train_args.negatives_x_device:
