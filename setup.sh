@@ -40,6 +40,7 @@ $PY -m pip install \
     sentencepiece==0.1.97 \
     rank_bm25==0.2.2 \
     faiss-cpu==1.7.4 \
+    grad-cache==0.0.3 \
     ipython \
     tqdm
 
