@@ -31,7 +31,7 @@ python -m OpenLP.driver.patton_pretrain  \
     --gradient_accumulation_steps 32 \
     --learning_rate $LR  \
     --max_len 256  \
-    --num_train_epochs 2  \
+    --num_train_epochs 1  \
     --logging_dir $LOG_DIR/$MODEL_TYPE/$LR  \
     --evaluation_strategy steps \
     --remove_unused_columns False \
