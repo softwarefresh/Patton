@@ -31,6 +31,7 @@ $PY -m pip install torch==1.13.1+cu117 torchvision==0.14.1+cu117 \
 $PY -m pip install \
     transformers==4.21.1 \
     datasets==2.11.0 \
+    fsspec==2023.6.0 \
     pyarrow==12.0.1 \
     numpy==1.23.5 \
     scikit-learn==1.2.2 \
