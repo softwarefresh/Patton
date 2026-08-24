@@ -40,9 +40,13 @@ $PY -m pip install \
     sentencepiece==0.1.97 \
     rank_bm25==0.2.2 \
     faiss-cpu==1.7.4 \
-    grad-cache==0.0.3 \
     ipython \
     tqdm
+
+# ---- GradCache（不在 PyPI，从 GitHub 克隆后拷进 site-packages）
+git clone -q --depth 1 https://github.com/luyug/GradCache /tmp/GradCache
+cp -r /tmp/GradCache/grad_cache "$($PY -c 'import site; print(site.getsitepackages()[0])')/"
+rm -rf /tmp/GradCache
 
 # ---- 验证
 $PY -c "import torch; print('torch', torch.__version__, 'cuda', torch.cuda.is_available())"
