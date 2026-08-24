@@ -38,7 +38,7 @@ $PY -m pip install \
     tensorboard==2.12.1 \
     sentencepiece==0.1.97 \
     rank_bm25==0.2.2 \
-    faiss-cpu \
+    faiss-cpu==1.7.4 \
     ipython \
     tqdm
 
