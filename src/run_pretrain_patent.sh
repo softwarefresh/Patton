@@ -15,7 +15,8 @@ export CUDA_VISIBLE_DEVICES=0
 
 echo "start pretraining..."
 
-python -m OpenLP.driver.patton_pretrain  \
+# -u: stdout 无缓冲，nohup 重定向下 loss 日志实时落盘（默认块缓冲会攒到进程结束才写出）
+python -u -m OpenLP.driver.patton_pretrain  \
     --output_dir $CHECKPOINT_DIR/$MODEL_TYPE/$LR  \
     --model_name_or_path $PROJ_DIR/ckpt/chinese-roberta-wwm-ext  \
     --model_type $MODEL_TYPE \

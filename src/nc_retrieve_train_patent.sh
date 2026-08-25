@@ -16,7 +16,8 @@ MODEL_DIR=$PROJ_DIR/ckpt/patent/pretrain/graphformer/$LR
 
 echo "start retrieval training..."
 
-CUDA_VISIBLE_DEVICES=0 python -m OpenLP.driver.train_neg  \
+# -u: stdout 无缓冲，nohup 重定向下 loss 日志实时落盘（默认块缓冲会攒到进程结束才写出）
+CUDA_VISIBLE_DEVICES=0 python -u -m OpenLP.driver.train_neg  \
     --output_dir $CHECKPOINT_DIR/$MODEL_TYPE/$LR  \
     --model_name_or_path $MODEL_DIR  \
     --tokenizer_name $PROJ_DIR/ckpt/chinese-roberta-wwm-ext \
