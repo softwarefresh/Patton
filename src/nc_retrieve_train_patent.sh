@@ -26,14 +26,14 @@ CUDA_VISIBLE_DEVICES=0 python -u -m OpenLP.driver.train_neg  \
     --model_type $MODEL_TYPE \
     --do_train  \
     --hn_num 4 \
-    --save_steps 1000  \
+    --save_steps 500  \
     --eval_steps 1000  \
     --logging_steps 100 \
     --train_path $PROCESSED_DIR/train.jsonl  \
     --eval_path $PROCESSED_DIR/val.jsonl  \
     --fp16  \
     --per_device_train_batch_size 1  \
-    --per_device_eval_batch_size 16 \
+    --per_device_eval_batch_size 4 \
     --gradient_accumulation_steps 128 \
     --dataloader_num_workers 4 \
     --learning_rate $LR  \
