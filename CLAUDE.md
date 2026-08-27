@@ -10,6 +10,8 @@ Downstream tasks: node classification, dense retrieval, reranking, and link pred
 
 ## Current research: Patent-based enterprise collaboration recommendation
 
+> **实验进度：先读 PROGRESS.md** —— 各训练阶段的完成状态、生效的显存/数据配置、踩坑记录和服务器操作命令都在那里，跨会话维护。本文件只描述代码结构。
+
 **Goal:** Recommend companies that can collaborate based on patent information.
 
 **Chosen downstream tasks:** Retrieval → Reranking (two-stage pipeline). Link prediction as auxiliary.

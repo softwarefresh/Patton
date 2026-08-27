@@ -1,5 +1,8 @@
 # 服务器运行手册（优云智算 / 3080 Ti / Linux）
 
+> **当前实验进度见 [PROGRESS.md](PROGRESS.md)**（各阶段完成状态、生效配置、踩坑记录）。
+> 本手册是环境搭建与数据上传的流程文档，长期有效。
+
 本文件是「本地数据准备完成 → 租服务器跑训练」的操作清单。
 依据优云智算官方文档（docs.compshare.cn）整理。
 
@@ -195,7 +198,13 @@ conda activate patton        # 每次新终端先激活（或已写进 ~/.bashrc
 # ② 预训练（MLM + 对比，中文底座 → 专利语料）
 bash src/run_pretrain_patent.sh
 
-# ③ 检索训练（底座用预训练 checkpoint）
+# ③ 检索训练（底座用预训练 checkpoint；脚本默认用半数据 train.half.jsonl）
+# 先建抽样文件（训练集抽50%；验证集抽1/32——全量323k验证一次要3-4h）：
+cd /workspace/Patton/data/patent/nc
+awk 'NR % 2 == 0' train.jsonl > train.half.jsonl
+awk 'NR % 32 == 0' val.jsonl > val.small.jsonl
+awk 'NR % 32 == 0' val.rerank.32.jsonl > val.rerank.small.jsonl
+cd /workspace/Patton
 bash src/nc_retrieve_train_patent.sh
 # ④ 检索：建企业向量索引 + 测试查询检索 + recall
 bash src/nc_retrieve_infer_patent.sh
@@ -211,9 +220,11 @@ bash src/nc_rerank_test_patent.sh
 
 ## 5. 关键配置（3080 Ti 12GB 适配）
 
-- `max_len 256`（原版 32，中文专利文本长）
-- `fp16 + grad_cache` 全开
-- batch 4-8 + 梯度累积（显存不够就把 batch 减半、累积翻倍）
+- `max_len 256`（原版 32，中文专利文本长；256 覆盖 400 字查询约 65%）
+- **不用 grad_cache**：max_len 256 下它省不了前向缓存（每样本 36 条子图序列 × ~175MB/条）
+- 预训练：`batch 4 × 累积32`；检索/重排训练：`batch 1 × 累积128`（batch≥2 必 OOM）；验证 `batch 4`（16 会 OOM）
+- 存档先于验证：`save_steps 500` < `eval_steps 1000`（HF 顺序 log→eval→save，验证 OOM 会连存档一起丢）
+- 脚本已统一 `python -u`（stdout 无缓冲，loss 实时落盘；nohup 默认块缓冲会攒到进程结束才写出）
 - 单卡：`CUDA_VISIBLE_DEVICES=0`，未用 `negatives_x_device`（多卡专属）
 
 ## 6. 数据口径备忘
@@ -230,4 +241,6 @@ bash src/nc_rerank_test_patent.sh
 - `g_domain.db` 曾因 journal_mode=OFF 下杀进程损坏，已从母库重建。**任何写库操作不要中途强杀**；母库 `data_pipeline/patents.db`（25GB）不要动。
 - `bm25/trec_eval` 二进制缺失，检索 recall 用 `src/scripts/eval_trec.py`（纯 Python）替代。
 - 服务器上旧训练脚本（`run_pretrain.sh` 等）是原版英文领域的，专利项目一律用 `*_patent.sh`。
+- 检索/重排训练实际规模：训练 315k 条（脚本默认用抽 50% 的 `train.half.jsonl`，~9.6h）；重排训练 100k 条（~6h）；验证 323k 条（脚本默认用抽 1/32 的 `val.small.jsonl`，全量一次验证 3-4h）。
+- loss 日志在 pretrain.log/retrieve.log 看不到时先查 tensorboard（事件文件实时更新）；`python -u` 已修复新脚本。
 - 按量计费下**关机不收费**，但关机后 7 天实例自动释放、系统盘数据清空——**结果记得下载回本地**（重要 checkpoint 用 scp 拉回，或挂载云存储持久化）。
