@@ -47,6 +47,12 @@ TRUNC_Q = 400            # 本地截断: 查询文本
 TRUNC_N = 300            # 邻居文本
 TRUNC_K = 500            # 正例企业文本
 TRUNC_NEG = 300          # 负例企业文本
+# ⚠️ 上面两个值不相等 = 正负例第二处构造不对称(正例最长 500 字、负例 300 字)。
+# 当前 max_len=256, 中文近似字级 tokenize, 两者都会被 tokenizer 截到 ~254 token,
+# 短于 300 字的文本两侧完全一致 —— 所以现在观察不到差异、不构成泄漏。
+# 但 max_len 一旦提到 300 以上, "文本更长=正例" 就会变成可利用的捷径。
+# 若要提高 max_len, 先把这两个值改成相等。
+
 N_BM25_HARD = 4          # 检索负例中 BM25 硬负个数
 N_RAND = 4               # 检索负例中随机负个数
 N_NEGS_RERANK = 20       # 重排每查询 BM25 硬负个数
@@ -419,7 +425,11 @@ def stage_assemble():
                     rec = {
                         'q_text': (qt or '')[:TRUNC_Q],
                         'q_n_text': qn_of(qid, texts),
-                        'positives': [{'k_text': doc_ktext_full[d], 'k_n_text': kn.get(d, [''] * N_NB)} for d in pos],
+                        # k 侧一律不给邻居: 正例填 kn 而负例留空会造成确定性标签泄漏
+                        # (邻居 mask 是模型显式输入, 读 mask 即可分出正负例),
+                        # 且 documents.txt 建索引时企业本就没有邻居, 训练/推理需一致。
+                        # 企业侧图谱知识由预训练承载(见下方 write_pretrain)。勿改回 kn.get(d, ...)
+                        'positives': [{'k_text': doc_ktext_full[d], 'k_n_text': [''] * N_NB} for d in pos],
                         'negatives': [{'k_text': doc_ktext[d], 'k_n_text': [''] * N_NB} for d in negs],
                     }
                     f.write(json.dumps(rec, ensure_ascii=False) + '\n')
@@ -448,7 +458,8 @@ def stage_assemble():
                 rec = {
                     'q_text': (qt or '')[:TRUNC_Q],
                     'q_n_text': qn_of(qid, texts),
-                    'positives': [{'k_text': doc_ktext_full[d], 'k_n_text': kn.get(d, [''] * N_NB)} for d in pos],
+                    # 同上: k 侧一律不给邻居, 否则重排测试集也带泄漏, 终指标会虚高
+                    'positives': [{'k_text': doc_ktext_full[d], 'k_n_text': [''] * N_NB} for d in pos],
                     'negatives': [{'k_text': doc_ktext[d], 'k_n_text': [''] * N_NB} for d in bm],
                 }
                 fr.write(json.dumps(rec, ensure_ascii=False) + '\n')
