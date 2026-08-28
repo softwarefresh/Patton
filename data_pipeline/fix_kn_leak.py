@@ -16,6 +16,13 @@ inference_dataset.py:53 的 `if 'n_text' in example` 走不进去，
 注意：空邻居仍占一个子图序列槽（train_dataset.py:127 用 [0] 占位），
 所以置空必须**保留原有槽位数**，不能把列表清成 []，否则张量形状对不上。
 
+两种格式都能修：
+  - 文本格式 *.text.jsonl        —— k_n_text 是 5 个字符串，空 = ''
+  - tokenize 后 *.jsonl          —— k_n_text 是 5 个 token-id 列表，空 = []
+    （build_train_neg.py:44 用 add_special_tokens=False，空串正好编码成 []，
+      与 train_dataset.py:128 的 `1 if k_n != [] else 0` 对应）
+服务器上若已经删掉 .text.jsonl 只剩 tokenize 结果，直接修后者即可，省一轮 tokenize。
+
 用法（默认 dry-run 只统计，不动文件）：
     python data_pipeline/fix_kn_leak.py --dir data/patent/nc
     python data_pipeline/fix_kn_leak.py --dir data/patent/nc --apply
@@ -44,8 +51,13 @@ def is_candidate_file(path):
     return isinstance(rec, dict) and 'positives' in rec and 'negatives' in rec
 
 
+def blank_like(slot):
+    """按槽位原本的类型给出「空」值：字符串 -> ''，token id 列表 -> []。"""
+    return '' if isinstance(slot, str) else []
+
+
 def scan_group(group, stats, side):
-    """统计一组候选的邻居填充情况。"""
+    """统计一组候选的邻居填充情况。'' 和 [] 都是假值，两种格式共用同一判断。"""
     for cand in group:
         kn = cand.get('k_n_text')
         if kn is None:
@@ -53,8 +65,10 @@ def scan_group(group, stats, side):
             continue
         stats[f'{side}_total'] += 1
         stats[f'{side}_slots_{len(kn)}'] += 1
-        if any(t != '' for t in kn):
+        if any(kn):
             stats[f'{side}_nonempty'] += 1
+        for slot in kn:
+            stats['fmt_text' if isinstance(slot, str) else 'fmt_token'] += 1
 
 
 def process_file(path, apply_changes, force):
@@ -78,8 +92,8 @@ def process_file(path, apply_changes, force):
                     for cand in rec.get('positives', []):
                         kn = cand.get('k_n_text')
                         if kn:
-                            # 保留槽位数，只把内容清空
-                            cand['k_n_text'] = [''] * len(kn)
+                            # 保留槽位数和槽位类型，只把内容清空
+                            cand['k_n_text'] = [blank_like(t) for t in kn]
                     fout.write(json.dumps(rec, ensure_ascii=False) + '\n')
 
                 if stats['records'] % 20000 == 0:
@@ -112,6 +126,11 @@ def process_file(path, apply_changes, force):
 def report(name, stats):
     pos_t, pos_n = stats['pos_total'], stats['pos_nonempty']
     neg_t, neg_n = stats['neg_total'], stats['neg_nonempty']
+    if stats['fmt_text'] and stats['fmt_token']:
+        fmt = f'混合(!) 文本槽{stats["fmt_text"]:,} / token槽{stats["fmt_token"]:,}'
+    else:
+        fmt = '文本 (*.text.jsonl)' if stats['fmt_text'] else 'token id (已 tokenize)'
+    print(f'  格式          : {fmt}')
     print(f'  记录数        : {stats["records"]:,}')
     print(f'  正例          : {pos_t:,} 个，其中带非空邻居 {pos_n:,} '
           f'({pos_n / pos_t * 100:.1f}%)' if pos_t else '  正例          : 0')
@@ -143,7 +162,10 @@ def main():
     ap.add_argument('--dir', default='data/patent/nc',
                     help='存放 *.text.jsonl 的目录（默认 data/patent/nc）')
     ap.add_argument('--files', nargs='*', default=None,
-                    help='只处理指定文件名（默认自动发现目录下所有候选格式文件）')
+                    help='只处理指定文件名（默认自动发现目录下所有 .jsonl 里的候选格式文件）')
+    ap.add_argument('--suffix', default='.jsonl',
+                    help='自动发现的后缀，默认 .jsonl（同时覆盖 .text.jsonl）；'
+                         '只想改文本版可传 .text.jsonl')
     ap.add_argument('--apply', action='store_true',
                     help='真正改写文件；不加则只统计（dry-run）')
     ap.add_argument('--force', action='store_true',
@@ -156,7 +178,7 @@ def main():
     if args.files:
         names = args.files
     else:
-        names = sorted(n for n in os.listdir(args.dir) if n.endswith('.text.jsonl'))
+        names = sorted(n for n in os.listdir(args.dir) if n.endswith(args.suffix))
 
     targets = []
     for n in names:
