@@ -85,11 +85,17 @@ def stage_documents():
         docs.append({'id': i, 'contents': k_text})
     con.commit()
     os.makedirs(OUT_NC, exist_ok=True)
+    # 爱企查经营范围里混有 \t 和 \n(1831/25598 家), 直接写 TSV 会把一条记录
+    # 劈成多行 -> pandas 解析报 "Expected 2 fields in line ..."
+    # 清洗只发生在写文件这一层, doc_map 里的 k_text 保持原样(训练端已 tokenize,
+    # 语义不受影响); 若日后重建数据, 由 fix_kn_leak 之外的清洗脚本统一处理
     with open(os.path.join(OUT_NC, 'documents.json'), 'w', encoding='utf-8') as f:
-        json.dump(docs, f, ensure_ascii=False)
+        json.dump([{'id': d['id'], 'contents': d['contents'].replace('\t', ' ').replace('\n', ' ')}
+                   for d in docs], f, ensure_ascii=False)
     with open(os.path.join(OUT_NC, 'documents.txt'), 'w', encoding='utf-8') as f:
         for d in docs:
-            f.write(f"{d['id']}\t{d['contents']}\n")
+            text = d['contents'].replace('\t', ' ').replace('\n', ' ')
+            f.write(f"{d['id']}\t{text}\n")
     con.close()
     print(f'documents: {len(docs)} 家企业')
     print('k_text 样例:', docs[0]['contents'][:120], flush=True)
@@ -465,7 +471,7 @@ def stage_assemble():
                 fr.write(json.dumps(rec, ensure_ascii=False) + '\n')
                 fn.write(json.dumps({'id': str(qid), 'text': (qt or '')[:TRUNC_Q],
                                      'n_text': qn_of(qid, texts)}, ensure_ascii=False) + '\n')
-                ft.write(f'{qid}\t{(qt or "")[:TRUNC_Q]}\n')
+                ft.write(f'{qid}\t{(qt or "")[:TRUNC_Q].replace(chr(9), " ").replace(chr(10), " ")}\n')
                 for d in pos:
                     ftr.write(f'{qid} 0 {d} 1\n')
     print(f'测试集: {len(qrows)} 条')
