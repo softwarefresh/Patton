@@ -4,7 +4,7 @@ cd $PROJ_DIR/src
 
 MODEL_TYPE=graphformer
 LR=1e-5
-STEP=5000
+STEP=500
 
 CHECKPOINT_DIR=$PROJ_DIR/ckpt/patent/nc_rerank/$MODEL_TYPE/$LR/checkpoint-$STEP
 
@@ -18,12 +18,12 @@ CUDA_VISIBLE_DEVICES=0 python -m OpenLP.driver.test_rerank  \
     --tokenizer_name $PROJ_DIR/ckpt/chinese-roberta-wwm-ext \
     --model_type $MODEL_TYPE \
     --do_eval  \
-    --pos_rerank_num 5 \
-    --neg_rerank_num 45 \
+    --pos_rerank_num 1 \
+    --neg_rerank_num 20 \
     --train_path $TEST_DIR/test.rerank.10000.jsonl  \
     --eval_path $TEST_DIR/test.rerank.10000.jsonl  \
     --fp16  \
-    --per_device_eval_batch_size 8 \
+    --per_device_eval_batch_size 1 \
     --max_len 256  \
     --evaluation_strategy steps \
     --remove_unused_columns False \
