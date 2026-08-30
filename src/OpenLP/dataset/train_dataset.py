@@ -233,7 +233,10 @@ class EvalRerankDataset(Dataset):
         group_positives = example['positives'] 
         group_negatives = example['negatives']
 
-        mask_key = {'k_text': [100], 'k_n_text': [[]]}
+        # 占位候选的邻居槽数必须与真实候选一致(5 槽), 否则 TrainRerankCollator
+        # 里 torch.LongTensor(k_mask) 会因内层长度不一致报
+        # "expected sequence of length 5 at dim 1 (got 1)"
+        mask_key = {'k_text': [100], 'k_n_text': [[], [], [], [], []]}
 
         # cut/add for positive
         if len(group_positives) >= self.pos_rerank_num:
