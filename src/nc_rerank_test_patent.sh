@@ -24,6 +24,7 @@ CUDA_VISIBLE_DEVICES=0 python -m OpenLP.driver.test_rerank  \
     --eval_path $TEST_DIR/test.rerank.10000.jsonl  \
     --fp16  \
     --per_device_eval_batch_size 1 \
+    --eval_accumulation_steps 50 \
     --max_len 256  \
     --evaluation_strategy steps \
     --remove_unused_columns False \
