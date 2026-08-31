@@ -55,6 +55,22 @@ class DenseTrainer(Trainer):
                 prepared.append(super()._prepare_inputs(x))
         return prepared
 
+    def prediction_step(self, model, inputs, prediction_loss_only, ignore_keys=None):
+        # 覆写原因: HF 4.21.1 基类实现把 DenseOutput 的所有字段
+        # (q_reps/p_reps/scores/target) 都当 logits 累积——每样本 p_reps 是
+        # (132, 768)，31.8 万条测试 = 全部 q/p 表示都攒在显存/内存里，
+        # CUDA OOM 和 Linux OOM killer 都是它造成的。
+        # 这里只取评测真正需要的 scores 和 target，内存与样本数无关。
+        query, keys = self._prepare_inputs(inputs)
+        with torch.no_grad():
+            outputs = model(query=query, keys=keys)
+        scores = outputs.scores.detach() if outputs.scores is not None else None
+        target = outputs.target.detach() if outputs.target is not None else None
+        loss = outputs.loss if outputs.loss is not None else None
+        if prediction_loss_only:
+            return (loss, None, None)
+        return (loss, scores, target)
+
     def get_train_dataloader(self) -> DataLoader:
         """
         Returns the training [`~torch.utils.data.DataLoader`].
