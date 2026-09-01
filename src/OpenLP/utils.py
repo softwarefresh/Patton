@@ -51,7 +51,10 @@ def calculate_metrics(evalpred: EvalPrediction):
     This function is for link prediction in batch evaluation.
     '''
 
-    scores, labels = evalpred.predictions[-2], evalpred.predictions[-1]
+    # prediction_step 覆写后 logits 是 (scores, target) 二元组，直接解包；
+    # 兼容旧行为（4 元组时取后两位）
+    preds = evalpred.predictions
+    scores, labels = (preds[-2], preds[-1]) if len(preds) > 2 else (preds[0], preds[1])
 
     predictions = np.argmax(scores, -1)
     prc = (np.sum((predictions == labels)) / labels.shape[0])
@@ -89,7 +92,10 @@ def calculate_rerank_metrics(evalpred: EvalPrediction):
     This function is for reranking evaluation.
     '''
 
-    scores, mask_labels = evalpred.predictions[-2], evalpred.predictions[-1]
+    # prediction_step 覆写后 logits 是 (scores, target) 二元组，直接解包；
+    # 兼容旧行为（4 元组时取后两位）
+    preds = evalpred.predictions
+    scores, mask_labels = (preds[-2], preds[-1]) if len(preds) > 2 else (preds[0], preds[1])
     pos_num, neg_num = mask_labels[0][-2], mask_labels[0][-1]
     mask_labels = mask_labels[:, :-2]
     labels = np.array([1] * pos_num + [0] * neg_num)
@@ -125,7 +131,9 @@ def calculate_ncc_metrics(evalpred: EvalPrediction):
     This function is for coarse-grained classificaion evaluation.
     '''
 
-    scores, labels = evalpred.predictions[-2], evalpred.predictions[-1]
+    # 同 calculate_metrics：兼容 prediction_step 覆写后的二元组结构
+    preds_all = evalpred.predictions
+    scores, labels = (preds_all[-2], preds_all[-1]) if len(preds_all) > 2 else (preds_all[0], preds_all[1])
     preds = np.argmax(scores, 1)
 
     recall_macro = recall_score(labels, preds, average='macro')
