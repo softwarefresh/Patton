@@ -95,6 +95,13 @@ def calculate_rerank_metrics(evalpred: EvalPrediction):
     # prediction_step 覆写后 logits 是 (scores, target) 二元组，直接解包；
     # 兼容旧行为（4 元组时取后两位）
     preds = evalpred.predictions
+    print("DEBUG preds type:", type(preds), "len:", len(preds), flush=True)
+    if isinstance(preds, tuple):
+        print("DEBUG preds 各元素 shape:", [getattr(p, "shape", None) for p in preds], flush=True)
+    else:
+        print("DEBUG preds shape:", getattr(preds, "shape", None), flush=True)
+    print("DEBUG label_ids type:", type(evalpred.label_ids),
+          "shape:", getattr(evalpred.label_ids, "shape", None), flush=True)
     scores, mask_labels = (preds[-2], preds[-1]) if len(preds) > 2 else (preds[0], preds[1])
     pos_num, neg_num = mask_labels[0][-2], mask_labels[0][-1]
     mask_labels = mask_labels[:, :-2]
