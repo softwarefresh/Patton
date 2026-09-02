@@ -88,6 +88,13 @@ class TrainHnDataset(Dataset):
         self.trainer = trainer
 
     def create_one_example(self, text_encoding: List[int]):
+        # 数据是 build_train_neg.py 预 tokenize 好的 id 列表（无特殊 token）。
+        # slow tokenizer 会原样透传 id；fast tokenizer 不接受 id 列表作 text，
+        # 且逐条 encode_plus 是评测吞吐瓶颈（batch 1/2 同速 ~2.3 it/s）。
+        # 直接短路截断，[CLS]/[SEP] 由 collator 的 tokenizer.pad 统一加。
+        if isinstance(text_encoding, list) and len(text_encoding) > 0 and isinstance(text_encoding[0], int):
+            # -2 留给 collator 加的 [CLS]/[SEP]，总量仍为 max_len（与旧路径一致）
+            return text_encoding[: self.data_args.max_len - 2]
         item = self.tokenizer.encode_plus(
             text_encoding,
             truncation='only_first',
@@ -204,6 +211,13 @@ class EvalRerankDataset(Dataset):
         self.neg_rerank_num = data_args.neg_rerank_num
 
     def create_one_example(self, text_encoding: List[int]):
+        # 数据是 build_train_neg.py 预 tokenize 好的 id 列表（无特殊 token）。
+        # slow tokenizer 会原样透传 id；fast tokenizer 不接受 id 列表作 text，
+        # 且逐条 encode_plus 是评测吞吐瓶颈（batch 1/2 同速 ~2.3 it/s）。
+        # 直接短路截断，[CLS]/[SEP] 由 collator 的 tokenizer.pad 统一加。
+        if isinstance(text_encoding, list) and len(text_encoding) > 0 and isinstance(text_encoding[0], int):
+            # -2 留给 collator 加的 [CLS]/[SEP]，总量仍为 max_len（与旧路径一致）
+            return text_encoding[: self.data_args.max_len - 2]
         item = self.tokenizer.encode_plus(
             text_encoding,
             truncation='only_first',
