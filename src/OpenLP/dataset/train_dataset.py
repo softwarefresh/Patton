@@ -93,8 +93,10 @@ class TrainHnDataset(Dataset):
         # 且逐条 encode_plus 是评测吞吐瓶颈（batch 1/2 同速 ~2.3 it/s）。
         # 直接短路截断，[CLS]/[SEP] 由 collator 的 tokenizer.pad 统一加。
         if isinstance(text_encoding, list) and len(text_encoding) > 0 and isinstance(text_encoding[0], int):
-            # -2 留给 collator 加的 [CLS]/[SEP]，总量仍为 max_len（与旧路径一致）
-            return text_encoding[: self.data_args.max_len - 2]
+            # -2 留给 collator 的 tokenizer.pad 加的 [CLS]/[SEP]，总量仍为 max_len
+            # 返回格式必须与 encode_plus 一致（带 input_ids 键的 dict），
+            # 否则 pad 报 'list' object has no attribute 'keys'
+            return {'input_ids': text_encoding[: self.data_args.max_len - 2]}
         item = self.tokenizer.encode_plus(
             text_encoding,
             truncation='only_first',
@@ -216,8 +218,10 @@ class EvalRerankDataset(Dataset):
         # 且逐条 encode_plus 是评测吞吐瓶颈（batch 1/2 同速 ~2.3 it/s）。
         # 直接短路截断，[CLS]/[SEP] 由 collator 的 tokenizer.pad 统一加。
         if isinstance(text_encoding, list) and len(text_encoding) > 0 and isinstance(text_encoding[0], int):
-            # -2 留给 collator 加的 [CLS]/[SEP]，总量仍为 max_len（与旧路径一致）
-            return text_encoding[: self.data_args.max_len - 2]
+            # -2 留给 collator 的 tokenizer.pad 加的 [CLS]/[SEP]，总量仍为 max_len
+            # 返回格式必须与 encode_plus 一致（带 input_ids 键的 dict），
+            # 否则 pad 报 'list' object has no attribute 'keys'
+            return {'input_ids': text_encoding[: self.data_args.max_len - 2]}
         item = self.tokenizer.encode_plus(
             text_encoding,
             truncation='only_first',
