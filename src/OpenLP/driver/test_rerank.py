@@ -68,7 +68,8 @@ def main():
     tokenizer = AutoTokenizer.from_pretrained(
         model_args.tokenizer_name if model_args.tokenizer_name else model_args.model_name_or_path,
         cache_dir=model_args.cache_dir,
-        use_fast=False,
+        use_fast=True,   # fast 分词器：EvalRerankDataset 每样本要 encode 132 条子图序列，
+                         # Python 版 tokenizer 是评测吞吐瓶颈（batch 2 与 batch 1 同速即证）
     )
     model = DenseRerankModel.build(
         model_args,
