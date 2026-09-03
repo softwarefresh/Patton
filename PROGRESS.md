@@ -12,7 +12,7 @@
 | ②' 检索训练（修复版） | ✅ 2026-08-28 完成（10h02m，1231 步） | `ckpt/patent/nc_retrieval/graphformer/1e-5/` | eval_loss 1.30；**P@1 0.60 / MRR 0.75 / NDCG@10 0.81**（真实值，且高于泄漏版） |
 | ③ 检索推理 → FAISS 检索 + recall | 🔄 进行中 | `node_label_embed/` + trec 结果 | 建索引时 documents.txt 被换行符劈裂，已从 documents.json 重建（25,598 家、0 异常行），infer/search 重跑中 |
 | ④ 重排训练（100k 样本，~6h） | ⏳ 数据已修（正例 k_n 清空） | `ckpt/patent/nc_rerank/` | 底座用 ②' 的 checkpoint；**开跑前先清旧 pkl** |
-| ⑤ 重排测试 | ⏳ | P@1/MRR/NDCG | 需把 `nc_rerank_test_patent.sh` 的 STEP 改成最佳存档步数 |
+| ⑤ 重排测试 | 🔄 全量运行中（09/03 09:12 启动，≈38.5h，预计 09/04 23:45 前后完成） | `rerank_test.log` | 验证集冒烟已通过：P@1 0.842 / MRR 0.893 / NDCG@10 0.914 |
 | ⑥ 结果回传本地 | ⏳ 部分 | 本地 `ckpt/patent/` | ②' 的 ckpt 跑完后需 scp 拉回（关机 7 天清盘） |
 
 ## ③ 的重要注意（pkl 缓存陷阱）
@@ -98,6 +98,18 @@ nohup bash src/nc_rerank_train_patent.sh > rerank.log 2>&1 &       # ④ 重排�
 bash src/nc_retrieve_infer_patent.sh      # ③ 建索引（documents.txt 25,598 家）
 bash src/nc_retrieve_retrieval_patent.sh  # ③ 检索 + recall@50/100
 ```
+
+### ⑤ 重排全量评测进度查询（新开会话先跑这些）
+
+```bash
+cd /workspace/Patton
+ps aux | grep test_rerank | grep -v grep        # 在跑 = 有输出
+tail -1 rerank_test.log                         # 进度条 %（159298 步，1.15 it/s ≈ 38.5h）
+grep eval_prc rerank_test.log                   # 完成后取最终指标
+```
+
+⚠️ 中途**不要**在新窗口重复启动评测脚本；脚本被 `git checkout` 重置过可执行位，
+重跑前先 `chmod +x src/nc_rerank_test_patent.sh`。环境必须 `conda activate patton`（不是 py312）。
 
 ### 修泄漏（若日后重建数据后仍需修 tokenize 文件）
 
