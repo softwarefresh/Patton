@@ -1,19 +1,20 @@
 # 实验进度（专利→企业合作推荐）
 
 > 本文件记录实验流水线的当前状态，跨会话维护。新开会话先读这里。
-> 最近更新：2026-08-28
+> 最近更新：2026-09-05
 
-## 当前状态：③ 检索推理 + FAISS 检索 + recall 进行中
+## 当前状态：主线 ✅ 回传完毕；⑦ 去预训练消融 ⏳（脚本就绪，服务器待跑）；③ recall 待定
 
 | 阶段 | 状态 | 产物 | 指标 |
 |---|---|---|---|
 | ① 预训练（MLM+对比，中文底座→专利语料） | ✅ 2026-08-25 完成（30h） | `ckpt/patent/pretrain/graphformer/1e-5/` | train_loss 1.29；val MRR **0.83** / NDCG@10 **0.87**。**不受泄漏影响** |
 | ② 检索训练（泄漏版） | ❌ 作废，已存档 | 本地 `ckpt/patent/nc_retrieval_leaked/`（scp 于 08-28） | P@1 0.39 / MRR 0.63 —— 泄漏灌水，仅作对照组 |
 | ②' 检索训练（修复版） | ✅ 2026-08-28 完成（10h02m，1231 步） | `ckpt/patent/nc_retrieval/graphformer/1e-5/` | eval_loss 1.30；**P@1 0.60 / MRR 0.75 / NDCG@10 0.81**（真实值，且高于泄漏版） |
-| ③ 检索推理 → FAISS 检索 + recall | 🔄 进行中 | `node_label_embed/` + trec 结果 | 建索引时 documents.txt 被换行符劈裂，已从 documents.json 重建（25,598 家、0 异常行），infer/search 重跑中 |
-| ④ 重排训练（100k 样本，~6h） | ⏳ 数据已修（正例 k_n 清空） | `ckpt/patent/nc_rerank/` | 底座用 ②' 的 checkpoint；**开跑前先清旧 pkl** |
-| ⑤ 重排测试 | 🔄 全量运行中（09/03 09:12 启动，≈38.5h，预计 09/04 23:45 前后完成） | `rerank_test.log` | 验证集冒烟已通过：P@1 0.842 / MRR 0.893 / NDCG@10 0.914 |
-| ⑥ 结果回传本地 | ⏳ 部分 | 本地 `ckpt/patent/` | ②' 的 ckpt 跑完后需 scp 拉回（关机 7 天清盘） |
+| ③ 检索推理 → FAISS 检索 + recall | ⚠️ 已跑完但 recall 未落日志（前台 `bash` 无重定向）；trec 文件被脚本末尾 rm（`nc_retrieve_retrieval_patent.sh:32`），补算=重跑 search（corpus 向量在 `node_label_embed/` 可复用，只重编码查询，约 1-3h） | `node_label_embed/` + trec 结果 | 建索引时 documents.txt 被换行符劈裂，已从 documents.json 重建（25,598 家、0 异常行） |
+| ④ 重排训练（100k 样本） | ✅ 完成（08-29，6h16m，781 步） | `ckpt/patent/nc_rerank/graphformer/1e-5/checkpoint-500` | 底座用 ②' 的 checkpoint；train_loss 0.2087；**无训练中 eval**（781 步 < eval_steps 1000） |
+| ⑤ 重排测试 | ✅ 2026-09-05 完成（38h41m，159,298 步） | `rerank_test.log` | 全量 **P@1 0.817 / MRR 0.876 / NDCG@5 0.891 / NDCG@10 0.901**（冒烟 0.842/0.893/0.914，全量略降正常——test 每查询最多 10000 候选） |
+| ⑥ 结果回传本地 | ✅ 完成（2026-09-06） | 本地 `ckpt/patent/` + `logs/patent/` | pretrain/检索/重排 ckpt 与日志全部到齐；服务器 tokenize 数据（33GB）未回传（本地有文本版可重建） |
+| ⑦ 消融：去预训练 | ⏳ 脚本已就绪（`nc_rerank_ablation_*_patent.sh`） | `ckpt/patent/nc_rerank_nopretrain/` | 底座 chinese-roberta 直接训重排（其余与④一致）；对比在 val.rerank.small 上主模型同步重测（各 ~1.2h，全量 test 38.7h 不重复跑） |
 
 ## ③ 的重要注意（pkl 缓存陷阱）
 
@@ -99,17 +100,13 @@ bash src/nc_retrieve_infer_patent.sh      # ③ 建索引（documents.txt 25,598
 bash src/nc_retrieve_retrieval_patent.sh  # ③ 检索 + recall@50/100
 ```
 
-### ⑤ 重排全量评测进度查询（新开会话先跑这些）
+### ⑤ 重排全量评测：✅ 完成（2026-09-05，38h41m）
 
-```bash
-cd /workspace/Patton
-ps aux | grep test_rerank | grep -v grep        # 在跑 = 有输出
-tail -1 rerank_test.log                         # 进度条 %（159298 步，1.15 it/s ≈ 38.5h）
-grep eval_prc rerank_test.log                   # 完成后取最终指标
-```
-
-⚠️ 中途**不要**在新窗口重复启动评测脚本；脚本被 `git checkout` 重置过可执行位，
-重跑前先 `chmod +x src/nc_rerank_test_patent.sh`。环境必须 `conda activate patton`（不是 py312）。
+最终指标（`grep eval_prc rerank_test.log`）：P@1 **0.817** / MRR **0.876** / NDCG@5 **0.891** / NDCG@10 **0.901**。
+对比 ②' 检索（P@1 0.60 / MRR 0.75 / NDCG@10 0.81）提升明显——两阶段管线（FAISS 粗筛 → 重排精排）生效。
+回传已完成（2026-09-06）：`ckpt/patent/nc_rerank`（1.6G，checkpoint-500 完整含 optimizer/scheduler）+ `logs/patent/` 三个日志。
+注意：`retrieve.log` 实为 ②' 检索**训练**日志（末次 eval：prc 0.597 / mrr 0.752 / ndcg@10 0.812，与表一致）；
+③ FAISS recall 前台运行未落日志，数值只能从服务器 trec 结果文件补算（`eval_trec.py`，纯 CPU）。
 
 ### 修泄漏（若日后重建数据后仍需修 tokenize 文件）
 
