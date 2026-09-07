@@ -3,23 +3,33 @@
 > 本文件记录实验流水线的当前状态，跨会话维护。新开会话先读这里。
 > 最近更新：2026-09-05
 
-## 当前状态：主线 ✅ 回传完毕；⑦ 去预训练消融 ⏳（脚本就绪，服务器待跑）；③ recall 待定
+## 当前状态：③ recall ✅ 已补（稠密 0.34/0.43，BM25 0.02/0.03）；待办：scp 消融结果 + 检索改进决策 + 关机
 
 | 阶段 | 状态 | 产物 | 指标 |
 |---|---|---|---|
 | ① 预训练（MLM+对比，中文底座→专利语料） | ✅ 2026-08-25 完成（30h） | `ckpt/patent/pretrain/graphformer/1e-5/` | train_loss 1.29；val MRR **0.83** / NDCG@10 **0.87**。**不受泄漏影响** |
 | ② 检索训练（泄漏版） | ❌ 作废，已存档 | 本地 `ckpt/patent/nc_retrieval_leaked/`（scp 于 08-28） | P@1 0.39 / MRR 0.63 —— 泄漏灌水，仅作对照组 |
 | ②' 检索训练（修复版） | ✅ 2026-08-28 完成（10h02m，1231 步） | `ckpt/patent/nc_retrieval/graphformer/1e-5/` | eval_loss 1.30；**P@1 0.60 / MRR 0.75 / NDCG@10 0.81**（真实值，且高于泄漏版） |
-| ③ 检索推理 → FAISS 检索 + recall | ⚠️ 已跑完但 recall 未落日志（前台 `bash` 无重定向）；trec 文件被脚本末尾 rm（`nc_retrieve_retrieval_patent.sh:32`），补算=重跑 search（corpus 向量在 `node_label_embed/` 可复用，只重编码查询，约 1-3h） | `node_label_embed/` + trec 结果 | 建索引时 documents.txt 被换行符劈裂，已从 documents.json 重建（25,598 家、0 异常行） |
+| ③ 检索推理 → FAISS 检索 + recall | ✅ 2026-09-07 重跑完成（`retrieve2.log`） | `node_label_embed/` + trec 结果 | **稠密 recall@50 0.343 / @100 0.432**（n=318,596）；BM25 本地补算（`data_pipeline/bm25_recall.py`，与训练负例同口径）recall@20 0.013 / @50 0.022 / @100 0.034 / @200 0.051 —— **粗筛必须用稠密**；BM25 仅 12 倍弱于稠密，只配当负例来源 |
 | ④ 重排训练（100k 样本） | ✅ 完成（08-29，6h16m，781 步） | `ckpt/patent/nc_rerank/graphformer/1e-5/checkpoint-500` | 底座用 ②' 的 checkpoint；train_loss 0.2087；**无训练中 eval**（781 步 < eval_steps 1000） |
 | ⑤ 重排测试 | ✅ 2026-09-05 完成（38h41m，159,298 步） | `rerank_test.log` | 全量 **P@1 0.817 / MRR 0.876 / NDCG@5 0.891 / NDCG@10 0.901**（冒烟 0.842/0.893/0.914，全量略降正常——test 每查询最多 10000 候选） |
 | ⑥ 结果回传本地 | ✅ 完成（2026-09-06） | 本地 `ckpt/patent/` + `logs/patent/` | pretrain/检索/重排 ckpt 与日志全部到齐；服务器 tokenize 数据（33GB）未回传（本地有文本版可重建） |
-| ⑦ 消融：去预训练 | ⏳ 脚本已就绪（`nc_rerank_ablation_*_patent.sh`） | `ckpt/patent/nc_rerank_nopretrain/` | 底座 chinese-roberta 直接训重排（其余与④一致）；对比在 val.rerank.small 上主模型同步重测（各 ~1.2h，全量 test 38.7h 不重复跑） |
+| ⑦ 消融：去预训练 | ✅ 2026-09-07 完成（781 步，train_loss 1.442 vs 主 0.209） | `ckpt/patent/nc_rerank_nopretrain/` | val.rerank.small 同文件对比：主模型 P@1 0.830 / MRR 0.886 / NDCG@10 0.910 vs 消融 P@1 0.766 / MRR 0.838 / NDCG@10 0.870 → **+6.4 P@1 点**（消融同时去掉 ① 预训练 + ②' 检索训练两段；单独归因需再补「预训练→重排」中间版） |
 
 ## ③ 的重要注意（pkl 缓存陷阱）
 
 `search.py:77`：若 `data/patent/nc/patent_patent_retrieval_dict.pkl` 已存在，search 会**直接读旧结果、跳过新检索**。
 所以每次换模型/换索引重跑 ③，必须确认该 pkl 不存在（脚本正常结束时末尾会 rm；中途失败的不会）。
+
+## 两阶段叙事要点（2026-09-07，写论文前先读）
+
+- **端到端天花板 = 稠密 recall@100 0.432**：重排再好，粗筛漏掉的就救不回来。
+- 重排 P@1 0.817 的设定是「1 正例 + 20 BM25 干扰项」的排序任务，**与 FAISS 无关**，论文里必须写清。
+- 检索弱的可解释根因之一：batch 1×累积 128 训练**没有 in-batch 负例**（5 路对比），见「生效配置」。
+  改进方向：max_len 降到 128/192 换 batch 4-8（或双卡），恢复 in-batch 负例重训检索——recall 大概率显著上升，
+  是当前性价比最高的实验方向；但会级联重跑 ③④⑤（检索→重排底座→全量测试 38.7h），想清楚再动。
+- 论文建议结构：检索阶段如实报 recall（稠密 vs BM25 对比表本身就是一个有信息量的结果）；
+  核心贡献 = 重排精度（P@1 0.817）+ 预训练增益（+6.4 P@1 点）；检索改进列为 future work 或后续实验。
 
 ## 事故一：正例/负例邻居不对称 → 确定性标签泄漏（2026-08-27 发现，已修复）
 
