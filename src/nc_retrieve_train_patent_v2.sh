@@ -1,8 +1,9 @@
 # 检索阶段训练 v2 (专利 -> 企业): 恢复 in-batch 负例
-# 与 ②' 的唯一区别: max_len 256→128 换 batch 1→4（注意力显存按长度平方缩放:
-# 128²=256²/4, batch 4@128 的总显存 = batch 1@256 已验证的包络, 12G 安全）
-# 效果: 每个 micro-batch 有 4 个 in-batch 负例 + 4 BM25 硬负 = 8 路对比;
+# 与 ②' 的区别: max_len 256→128 换 batch 1→4; hn_num 4→3（每个负例占 6 条子图序列,
+# 少 1 个负例省 1/6 显存——batch 4@128+hn4 实测 OOM 10.9G, hn3 ≈9G 可装）
+# 效果: 每个 micro-batch 有 4 个 in-batch 负例 + 3 BM25 硬负 = 7 路对比;
 # ②' 是 1 正 + 4 负 = 5 路, 从没学过全库判别（recall@100 只有 0.43 的根因之一）
+# 若仍 OOM, 回退: batch 2 + hn_num 4（6 路, 显存 ~5.5G）
 # 输出独立目录 nc_retrieval_v2, 不覆盖 ②'（④ 重排的底座）
 PROJ_DIR=/workspace/Patton
 cd $PROJ_DIR/src
@@ -24,7 +25,7 @@ CUDA_VISIBLE_DEVICES=0 python -u -m OpenLP.driver.train_neg  \
     --tokenizer_name $PROJ_DIR/ckpt/chinese-roberta-wwm-ext \
     --model_type $MODEL_TYPE \
     --do_train  \
-    --hn_num 4 \
+    --hn_num 3 \
     --save_steps 500  \
     --eval_steps 1000  \
     --logging_steps 100 \
