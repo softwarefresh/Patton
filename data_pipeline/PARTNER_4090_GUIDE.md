@@ -25,7 +25,7 @@ git commit -m "Add v2 retrieval baseline and 4090 server workflow"
 git push origin HEAD:patent
 ```
 
-辅助脚本只暂存16个小源文件（含词法检索共用模块），不提交数据，也不自动commit/push。如果已有其他暂存文件，它会停止，让你先检查；不要通过 `git add .` 将其他研究文件混入。若push报告远端更新冲突，保留当前内容并处理该提示，不使用强推。
+辅助脚本只暂存18个小源文件（含词法共用模块及逐篇max对照），不提交数据，也不自动commit/push。如果已有其他暂存文件，它会停止，让你先检查；不要通过 `git add .` 将其他研究文件混入。若push报告远端更新冲突，保留当前内容并处理该提示，不使用强推。
 
 ## 3. 通过GitHub网页直接上传数据附件
 
@@ -181,4 +181,21 @@ python -u data_pipeline/partner_dense_baseline.py evaluate \
 
 本轮保留：`tmp/server_environment.json`、`tmp/partner_environment_freeze.txt`、`ckpt/partner_dense/run1/` 下的run_config/training_history/training_summary/best.pt，以及 `logs/partner_v2/` 评测报告。记录服务器 `git rev-parse HEAD`。将这些结果下载回本机或复制到确认的持久化存储，之后再处理实例。没有使用含后续数据的旧checkpoint。
 
-当前本地验证覆盖小样本CPU假编码器端到端、标签隔离、多正例、缓存指纹、打包/解包及安全拒绝；4090上的安装、真实中文底座编码和正式训练需按上面的步骤实际运行后才能确认。
+本地检查覆盖CPU小样本端到端、标签隔离、多正例、缓存指纹、打包/解包及拒绝异常输入。用户已经回传4090数据安装、64篇检查、434,047篇正式编码及投影run1训练/测试成功日志；实际结果见比较报告。下面新增逐篇max对照目前只有CPU检查，尚待真实验证集运行。
+
+## 9. 预先规划的逐篇证据对照：先验证集
+
+已有完整partner_vectors后，不需要再次编码或训练。逐篇max将候选每篇专利分别归一，取查询与真实专利向量的最大余弦；query仍使用前6篇原始向量均值。不加载投影checkpoint，用于和原始冻结均值对照。它保留至多20向量/企业，是未压缩参照，不能作为同索引预算的创新增益或数学性能上界。
+
+```bash
+cd /workspace/Patton
+git pull --ff-only origin patent
+.venv_partner4090/bin/python -u data_pipeline/partner_evidence_max_baseline.py evaluate \
+  --data-dir data/patent/cooperation_v2 \
+  --embedding-dir artifacts/partner_vectors \
+  --split val \
+  --output logs/partner_v2/fullmax.val.json \
+  --device cuda --batch-size 16
+```
+
+本轮只看验证集，不重跑已经完成的两种测试方法，也不据测试成绩调参。对照目标在10月15日方法评审中已经提出；先验证完整证据的均值/max及交互教师，再决定是否进入固定R预算压缩和删除响应保持。实际测试结果汇总见 `research_audit/2026-10-26/retrieval_baseline_comparison.md`。

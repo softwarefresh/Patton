@@ -2,7 +2,7 @@
 
 > 本文件记录实验流水线的当前状态，跨会话维护。新开会话先读这里。
 > **完整实验全景（任务/数据/设计/结果/资产/教训）见 [EXPERIMENTS.md](EXPERIMENTS.md)——新接手者先读那个。**
-> 最近更新：2026-10-26（新服务器全量434,047篇冻结编码已通过，用时621.984秒；训练保存/日志已改进，下一步投影检索基线训练，尚无正式训练结果）
+> 最近更新：2026-10-26（基线测试完成：投影/冻结均值/BM25的Recall100为15.01%/14.01%/12.08%；投影Top20/MRR退化，下一步仅验证集检查逐篇证据最大匹配，创新模型仍未训练）
 
 ## 4090新服务器迁移准备（2026-10-26）
 
@@ -20,6 +20,12 @@
 - 用户已回传**全量真实CUDA编码完成**：status=passed、patents=434047、smoke_only=false、output_dir=/workspace/Patton/artifacts/partner_vectors、elapsed_seconds=621.984（约10分22秒）；nohup任务Done。现可训练，不再执行encode或重装数据。下一步 `train --embedding-dir artifacts/partner_vectors --output-dir ckpt/partner_dense/run1 --epochs 10 --batch-size 32 --seed 42 --device cuda`，只训练共享投影，验证集全池Recall100选best（含epoch0控制），测试集仍不参与。
 - 开跑前改进checkpoint：仅对state_dict张量detach/CPU/clone再保存，删除活模型的cpu()/to(device)迁移，保持GPU参数及optimizer引用不变；不改变编码格式或指纹，可复用现有434,047篇缓存。增加检查缓存/聚合训练与验证证据的阶段日志，以及最终status=completed摘要和耗时。CPU独立审查表明overwrite-module-parameters转换配置下旧迁移方式会使optimizer引用失配；这不表示用户默认配置已经失败，尚未运行正式训练。
 - 该训练修正的dense组9项检查通过，新增完整CPU训练回归：开启overwrite、关闭swap转换行为，确认optimizer与活模型参数为同一对象，且weight_decay=0时训练真实更新权重；两个future flags均finally恢复。此前8项多正例、缓存/标签隔离和端到端检查继续通过。当前没有正式GPU投影训练/测试成绩。
+- 用户已回传真实4090投影基线训练摘要：`ckpt/partner_dense/run1/training_summary.json` status=completed、best_epoch=1、best_validation_recall@100=0.18382785882011374、test_accessed=false、encoder_frozen=true、innovation_model_trained=false、elapsed_seconds=143.407。完整编码缓存继续复用；正式检索基线训练已完成，GraphFormers/创新模型仍未训练。下一步按预定方案各评测一次best.pt与无checkpoint冻结均值对照，使用test全部2,112查询与22,312候选；输出 `logs/partner_v2/projection.test.json`、`frozen.test.json`，不得根据测试结果选epoch或调参。
+- **本轮测试结果已回传并记录**：投影/冻结均值/BM25：Recall20=5.65%/6.33%/6.10%，Recall100=15.01%/14.01%/12.08%，Hit100=23.06%/21.50%/17.14%，P1均1.61%，MRR100=0.03102/0.03282/0.03144。投影比同缓存冻结均值R100增1.00个百分点，R20降0.68个百分点，不能称全面或显著提升；Top100命中查询数分别487/454/362，Recall100不是查询成功率。测试均2,112查询、22,312候选、4,202正例。已对照本地文件验证用户输出8个输入SHA，以及BM25的3个重叠SHA一致；两神经方法embedding_manifest SHA均435a4ba935b0c20376de550eefb1f4e5224d824c9761ede73880615796c9c5a1，最佳checkpoint回传SHA5056b7f11cbcfa8c2dde1898002311d529ba0eb8878b0120f018065393716887。
+- 结果保存在 `research_audit/2026-10-26/server_reported_projection.test.json`、`server_reported_frozen.test.json`、`retrieval_baseline_comparison.json/.md`，神经结果为用户终端JSON转录，未独立取回服务器checkpoint/向量文件。仅seed42，尚无置信区间或多种子稳定性证据；与BM25的差别不只来自投影，文本处理/评分及索引预算也不同。GraphFormers及创新机制仍未实现/训练。
+- 按10月15日预定顺序，下一步先用既有冻结缓存在**验证集**比较逐篇最大匹配，再检验证据交互教师是否胜过均值/max，之后才值得开展固定R预算压缩与删除响应保持。逐篇max保留至多20个向量，是未压缩参照，不能称性能数学上界或相同索引预算的创新收益；本轮不根据已知测试成绩调参，也不重复测试现有两种方法。
+- 新增 `partner_evidence_max_baseline.py evaluate`，复用原始冻结缓存和同一query前6篇均值，候选逐篇L2归一取最大余弦，空槽-inf、全池排除与稳定ID排序；不加载投影W、不加载BERT、不训练新参数。报告实际向量数/维度及含padding张量字节，不把这些值称为实测峰值或FAISS索引大小。其6项CPU检查通过（负分空槽、max与mean区别、全池排除/并列/标签无关性、真实缓存fixture、指纹与时间拒绝），尚未在真实GPU/完整验证集运行；下一步仅 `--split val --output logs/partner_v2/fullmax.val.json --batch-size 16`。
+- 新对照加入上传白名单后，将18个源文件的Git暂存内容独立复制到临时目录，完整运行环境相关44项CPU检查全部通过，确认不依赖未上传的构建脚本。逐篇max的真实GPU验证结果仍待用户运行回传。
 - 服务器接续反馈：首次安装在check_parts阶段发现001仅50MiB、002仅60MiB（均应512MiB），003大小21,886,898字节正确，尚未写入安装目标。断点续传HTTP206有效，但附件节点实测速率约9KB/s，ETA约10小时；这是当前下载链路的表现，不能据此断言平台或GitHub限速。用户已提供控制台SSH登录命令（端口23），Windows现有OpenSSH/scp可用，改建议本机完整 `tmp/partner_release` 通过SCP直传 `/workspace/partner_release`，再从该目录install。首次主机确认及SSH密码由用户在本机终端交互输入，未索取密码、未由我实际上传到服务器。
 
 ## 根据专利推荐企业：新版数据已完成（2026-10-24）

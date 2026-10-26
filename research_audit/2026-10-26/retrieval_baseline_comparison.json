@@ -1,0 +1,62 @@
+{
+  "date_local": "2026-10-26",
+  "protocol": "patent_conditioned_observed_partner_v2.0",
+  "status": "reported_metrics_recorded_and_input_hashes_checked",
+  "neural_result_provenance": "Transcribed from user-supplied server terminal JSON; not downloaded server files",
+  "server_checkpoint_and_embedding_files_independently_retrieved": false,
+  "reported_input_fingerprints_verified_against_local_files": 8,
+  "bm25_overlapping_input_fingerprints_match": true,
+  "shared_neural_embedding_manifest_sha256": "435a4ba935b0c20376de550eefb1f4e5224d824c9761ede73880615796c9c5a1",
+  "query_count": 2112,
+  "candidate_count": 22312,
+  "positive_count": 4202,
+  "seed": 42,
+  "best_epoch_selected_on_validation": 1,
+  "best_validation_recall@100": 0.18382785882011374,
+  "methods": {
+    "bm25": {
+      "recall@20": 0.06100770284008919,
+      "recall@100": 0.1208304635272383,
+      "Hit@100": 0.17140151515151514,
+      "P@1": 0.016098484848484848,
+      "MRR@100": 0.031438199068416765
+    },
+    "frozen_mean": {
+      "recall@20": 0.06329921216075964,
+      "recall@100": 0.14011770083377695,
+      "Hit@100": 0.21496212121212122,
+      "P@1": 0.016098484848484848,
+      "MRR@100": 0.032823029986390646
+    },
+    "trained_projection": {
+      "recall@20": 0.056516060022493854,
+      "recall@100": 0.15013156047476733,
+      "Hit@100": 0.23058712121212122,
+      "P@1": 0.016098484848484848,
+      "MRR@100": 0.03102465809110214
+    }
+  },
+  "projection_minus_frozen_percentage_points": {
+    "recall@20": -0.6783152138265781,
+    "recall@100": 1.0013859640990386,
+    "Hit@100": 1.5625,
+    "P@1": 0.0
+  },
+  "projection_minus_bm25_recall@100_percentage_points": 2.930109694752904,
+  "projection_minus_frozen_mrr@100": -0.0017983718952885065,
+  "queries_with_hit@100": {
+    "bm25": 362,
+    "frozen_mean": 454,
+    "trained_projection": 487
+  },
+  "queries_with_top1_hit": {
+    "bm25": 34,
+    "frozen_mean": 34,
+    "trained_projection": 34
+  },
+  "interpretation": "Higher Recall@100 and Hit@100, lower Recall@20 and MRR than frozen mean; not an across-metric improvement",
+  "significance_or_multi_seed_stability_established": false,
+  "bm25_comparison_limit": "Same cohort and checked inputs; lexical text processing, scoring and index budget differ from dense methods",
+  "next_preplanned_validation_only_control": "Uncompressed per-patent maximum similarity on existing frozen cache",
+  "new_innovation_model_trained": false
+}

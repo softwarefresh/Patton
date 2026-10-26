@@ -6,10 +6,12 @@ $sourceFiles = @(
     'src/setup_partner_4090.sh',
     'data_pipeline/PATENT_PARTNER_V2.md', 'data_pipeline/PARTNER_4090_GUIDE.md',
     'data_pipeline/partner_evidence_dataset.py', 'data_pipeline/partner_dense_baseline.py',
+    'data_pipeline/partner_evidence_max_baseline.py',
     'data_pipeline/patent_partner_baseline.py', 'data_pipeline/package_partner_data.py',
     'data_pipeline/cooperation_baseline.py',
     'data_pipeline/stage_partner_code.ps1',
     'tests/test_partner_evidence_dataset.py', 'tests/test_partner_dense_baseline.py',
+    'tests/test_partner_evidence_max_baseline.py',
     'tests/test_patent_partner_baseline.py', 'tests/test_partner_transfer.py'
 )
 foreach ($relative in $sourceFiles) {

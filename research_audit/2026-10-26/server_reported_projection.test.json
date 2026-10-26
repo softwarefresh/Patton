@@ -1,0 +1,35 @@
+{
+  "recall@20": 0.056516060022493854,
+  "recall@100": 0.15013156047476733,
+  "Hit@100": 0.23058712121212122,
+  "P@1": 0.016098484848484848,
+  "MRR@100": 0.03102465809110214,
+  "query_count": 2112,
+  "candidate_count": 22312,
+  "evaluation_candidate_pool": "all_allowed_documents",
+  "gold_used_for_scoring": false,
+  "positive_count": 4202,
+  "format": "partner_dense_frozen_mean_v1",
+  "split": "test",
+  "encoder_frozen": true,
+  "pooling": "masked_token_mean_including_existing_cls_sep;query_first6;company_all20",
+  "trained_projection": true,
+  "selected_epoch": 1,
+  "checkpoint_loaded": true,
+  "checkpoint": {
+    "bytes": 2362957,
+    "sha256": "5056b7f11cbcfa8c2dde1898002311d529ba0eb8878b0120f018065393716887"
+  },
+  "embedding_manifest_sha256": "435a4ba935b0c20376de550eefb1f4e5224d824c9761ede73880615796c9c5a1",
+  "input_fingerprints": {
+    "tokenization_manifest.json": "019173348c95eae71058714941ce8bc0f89e3ab564bc97f0e78c4036ca505224",
+    "evidence.tokens.jsonl.gz": "466e6d6f048a7823443253e124f0d2c2ac393705510bb2362e06b87742d62847",
+    "evidence.jsonl.gz": "20aaf1fefad3a151329a43e7869a34b85cf07a8e8acd09d92c77b4cecfdd0283",
+    "documents.test.jsonl": "c71ea2daabebdfd2a9bdb0393c8be9758924f3b84716ad4bdebf3ae0ffc89bee",
+    "histories.test.jsonl": "6c53e6113f868dfbb5805aedcd673eaf14940a89217d42c72888fbcfb89fb8d6",
+    "queries.test.jsonl": "2f4b52240e44ecf31495f920e164c9361c26565058881f07cfe8535bf40977ad",
+    "test.pairs.jsonl": "afa3a732e39bde08b57243e2686c4994149eb211cf181b02b8355cc25cb0555a",
+    "dataset_manifest.json": "64ab0310fd45cb2d83c389997841a50ff817d5bb9be8d0af841be09163d1b244"
+  },
+  "innovation_model": false
+}
