@@ -311,8 +311,12 @@ def train(args):
     require(not output.exists(), "Refusing existing training output; choose a new run directory")
     device = choose_device(args.device)
     set_seed(args.seed)
+    started = time.monotonic()
+    print(json.dumps({"stage": "checking_embedding_cache"}), flush=True)
     store = EmbeddingStore(args.embedding_dir, args.data_dir)
+    print(json.dumps({"stage": "pooling_training_evidence"}), flush=True)
     training = SplitVectors(args.data_dir, "train", store)
+    print(json.dumps({"stage": "pooling_validation_evidence"}), flush=True)
     validation = SplitVectors(args.data_dir, "val", store)
     require(training.documents.shape[1] == validation.documents.shape[1], "Split vector dimension mismatch")
     model = Projection(store.metadata["dimension"]).to(device)
@@ -362,14 +366,19 @@ def train(args):
         print(json.dumps(record), flush=True)
         if select_validation_checkpoint(metrics, best_score):
             best_score, best_epoch = metrics["recall@100"], epoch
+            # Copy weights for serialization; keep the live model and optimizer
+            # on their training device throughout validation/checkpoint saves.
+            saved_weights = {name: value.detach().cpu().clone() for name, value in model.state_dict().items()}
             torch.save({"format": FORMAT, "dimension": store.metadata["dimension"],
-                        "state_dict": model.cpu().state_dict(), "configuration": configuration,
+                        "state_dict": saved_weights, "configuration": configuration,
                         "selected_epoch": epoch, "selection_split": "val", "validation": metrics}, output / "best.pt")
-            model.to(device)
         write_json(output / "training_history.json", history)
-    write_json(output / "training_summary.json", {"status": "completed", "best_epoch": best_epoch,
+    summary = {"status": "completed", "best_epoch": best_epoch,
                "best_validation_recall@100": best_score, "test_accessed": False,
-               "encoder_frozen": True, "innovation_model_trained": False})
+               "encoder_frozen": True, "innovation_model_trained": False,
+               "elapsed_seconds": round(time.monotonic() - started, 3)}
+    write_json(output / "training_summary.json", summary)
+    print(json.dumps(summary), flush=True)
 
 
 def evaluate(args):

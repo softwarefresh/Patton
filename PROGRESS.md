@@ -2,20 +2,25 @@
 
 > 本文件记录实验流水线的当前状态，跨会话维护。新开会话先读这里。
 > **完整实验全景（任务/数据/设计/结果/资产/教训）见 [EXPERIMENTS.md](EXPERIMENTS.md)——新接手者先读那个。**
-> 最近更新：2026-10-26（实验代码已推送patent，约1.10GB未加密数据/底座包已公开发布Release；远端SHA256及未登录下载核验通过，远程GPU尚未运行）
+> 最近更新：2026-10-26（新服务器全量434,047篇冻结编码已通过，用时621.984秒；训练保存/日志已改进，下一步投影检索基线训练，尚无正式训练结果）
 
 ## 4090新服务器迁移准备（2026-10-26）
 
-- 用户在优云智算新租RTX4090 24GB，所发终端为py312、驱动610.57.04、CUDA UMD13.3。沿用 `softwarefresh/Patton`，当前本地分支patent；用户确认仓库Public。**后续用户明确要求由我直接上传，数据不需要加密，安全不重要。该指示覆盖先前加密建议。** 现按小源文件正常Git提交、数据原始压缩分片直接放公开Release执行；用户不需要安装gh或7-Zip。
+- 用户当前服务器最新nvidia-smi仍为RTX4090、24564MiB，py312；**最新驱动595.80、显示CUDA13.2**，覆盖早先实例的610.57.04/CUDA13.3。原定torch2.6.0 cu124方案保留，实际CUDA运行已由64篇真实模型编码通过确认。沿用 `softwarefresh/Patton`，当前本地分支patent；用户确认仓库Public。**后续用户明确要求由我直接上传，数据不需要加密，安全不重要。该指示覆盖先前加密建议。** 现按小源文件正常Git提交、数据原始压缩分片直接放公开Release执行；用户不需要安装gh或7-Zip。
 - 上传前核对远程heads：main=d715eb06ca4393815cfbfe9b846352300669dbf4，patent=7a8f8000e26eb4071757428747aab74872e89543，与本地基点相同。本次16个运行源文件提交为112cfec60e88ded3cae4e2e97baf714ff84ced02，已追加推送patent。将本次暂存文件单独复制到隔离目录后37项运行检查通过，补齐词法共用模块，未借助其他未上传文件；没有强推或改旧历史，其他研究文件未提交。
 - 真实本地包 `tmp/partner_release/` 已生成且全量回读核验：**27文件（20数据/报告＋7底座）**，源2,549,000,484字节，gzip后1,095,628,722字节，3分片536,870,912/536,870,912/21,886,898字节。`partner-transfer.json` SHA256为a9863797846195a5f874462dacbdd047ebb69b9027a410a6f8004fd6d74d8d61。按用户最新明确授权，公开上传manifest及这3个未加密分片；此前自动生成的本地警示README不作为Release附件。未带原DB/年度CSV/旧训练checkpoint/可重建索引与缓存。
 - 新增 `package_partner_data.py` 的export/verify/install：流式打包，内层逐文件与分片指纹，固定安装根，拒绝路径越界、链接、重复、篡改和覆盖既存数据；安装中断可回滚。原加密辅助保留在本机，本次按用户指示不使用、不上传，也不要求安装7-Zip。
-- `requirements.partner4090.txt` 和 `src/setup_partner_4090.sh` 创建独立venv：Python3.10—3.12，torch2.6.0官方cu124、transformers4.44.2、numpy1.26.4；执行实际CUDA前向/反向检查并写环境记录。官方wheel/驱动兼容性已核查；**用户服务器安装与真实CUDA路径尚未执行**，不使用旧requirements.txt/setup.sh。
+- `requirements.partner4090.txt` 和 `src/setup_partner_4090.sh` 创建独立venv：Python3.10—3.12，torch2.6.0官方cu124、transformers4.44.2、numpy1.26.4；脚本执行CUDA前向/反向检查并写环境记录。官方wheel/驱动兼容性已核查；**用户已激活新环境并回传64篇真实GPU编码成功，尚无正式训练结果**，不使用旧requirements.txt/setup.sh。
 - 新 `partner_dense_baseline.py` 提供encode/train/evaluate：冻结原始中文底座，逐篇非padding token均值（既有CLS/SEP只用一次），查询前6篇/企业至多20篇均值，训练共享线性投影和全部正例平均log-softmax。完整val候选池Recall100选择best（含epoch0控制），test不参与选轮次。完整编码向量float32约1.33GB、磁盘映射读取；限量smoke缓存禁止正式训练/评测。模型、tokenizer、规范数据、缓存及checkpoint均绑定指纹，test的canonical manifest也须匹配训练记录。
 - 新增16项相关测试（8传输、8神经入口），加旧39项共**55项本地检查通过**；神经端到端使用CPU假编码器，**不能据此声称4090真实模型/全量训练已通过**。本地原始中文底座权重已用torch2.6 weights_only读取核对，tokenizer指纹与规范数据一致。
 - 已公开发布：https://github.com/softwarefresh/Patton/releases/tag/partner-v2-20261026 ，版本标签绑定112cfec代码提交，4个附件为 `partner-transfer.json` 和 `partner-assets.tar.gz.part001/002/003`。所有远端附件大小/上传状态/SHA256与本地一致。另以无认证请求下载整个manifest并核对SHA、逐个读取分片首字节及Content-Range总长，HTTP200/206均通过；服务器不需要GitHub登录、解密工具或密码。实际记录：`research_audit/2026-10-26/github_publication.json`。
 - 按步手册：`data_pipeline/PARTNER_4090_GUIDE.md` 已改为未加密分片直接下载流程；本轮本机上传已完成，用户从第4步服务器下载继续。`stage_partner_code.ps1` 只用于后续自行更新。已用本机原Git登录完成推送/Release API上传，没有要求用户安装gh或7-Zip。未连接用户服务器、未执行远程训练。
-- 下一步服务器verify/install、建独立环境、64篇真实GPU编码smoke、完整编码及均值/投影基线。它是新增可运行基线，**GraphFormers、贡献保持和创新方法训练入口仍待实现**，不混用旧所属企业任务结果。
+- 用户已回传服务器安装成功日志：来源 `/workspace/partner_release`，目标 `/workspace/Patton`，status=installed、files_verified=27、manifest SHA=a9863797846195a5f874462dacbdd047ebb69b9027a410a6f8004fd6d74d8d61，canonical_sources_modified=false。下一步建独立环境、64篇真实GPU编码smoke、完整编码及均值/投影基线。它是新增可运行基线，**GraphFormers、贡献保持和创新方法训练入口仍待实现**，不混用旧所属企业任务结果。
+- 用户已激活 `/workspace/Patton/.venv_partner4090`，回传真实模型CUDA smoke成功：status=passed、patents=64、smoke_only=true、output_dir=/workspace/Patton/artifacts/partner_smoke、elapsed_seconds=1.491。证明当前4090可执行本地中文底座编码，尚不代表完整编码/训练已完成。下一步在新目录 `artifacts/partner_vectors` 完整编码434,047篇，不传max-patents；建议nohup后台运行并保存日志，正式投影训练必须等待完整缓存生成成功后再开始。无需安装额外后台管理工具。
+- 用户已回传**全量真实CUDA编码完成**：status=passed、patents=434047、smoke_only=false、output_dir=/workspace/Patton/artifacts/partner_vectors、elapsed_seconds=621.984（约10分22秒）；nohup任务Done。现可训练，不再执行encode或重装数据。下一步 `train --embedding-dir artifacts/partner_vectors --output-dir ckpt/partner_dense/run1 --epochs 10 --batch-size 32 --seed 42 --device cuda`，只训练共享投影，验证集全池Recall100选best（含epoch0控制），测试集仍不参与。
+- 开跑前改进checkpoint：仅对state_dict张量detach/CPU/clone再保存，删除活模型的cpu()/to(device)迁移，保持GPU参数及optimizer引用不变；不改变编码格式或指纹，可复用现有434,047篇缓存。增加检查缓存/聚合训练与验证证据的阶段日志，以及最终status=completed摘要和耗时。CPU独立审查表明overwrite-module-parameters转换配置下旧迁移方式会使optimizer引用失配；这不表示用户默认配置已经失败，尚未运行正式训练。
+- 该训练修正的dense组9项检查通过，新增完整CPU训练回归：开启overwrite、关闭swap转换行为，确认optimizer与活模型参数为同一对象，且weight_decay=0时训练真实更新权重；两个future flags均finally恢复。此前8项多正例、缓存/标签隔离和端到端检查继续通过。当前没有正式GPU投影训练/测试成绩。
+- 服务器接续反馈：首次安装在check_parts阶段发现001仅50MiB、002仅60MiB（均应512MiB），003大小21,886,898字节正确，尚未写入安装目标。断点续传HTTP206有效，但附件节点实测速率约9KB/s，ETA约10小时；这是当前下载链路的表现，不能据此断言平台或GitHub限速。用户已提供控制台SSH登录命令（端口23），Windows现有OpenSSH/scp可用，改建议本机完整 `tmp/partner_release` 通过SCP直传 `/workspace/partner_release`，再从该目录install。首次主机确认及SSH密码由用户在本机终端交互输入，未索取密码、未由我实际上传到服务器。
 
 ## 根据专利推荐企业：新版数据已完成（2026-10-24）
 

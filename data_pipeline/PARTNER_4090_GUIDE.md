@@ -1,6 +1,6 @@
 # 新服务器实验操作手册（2026-10-26）
 
-适用当前机器：优云智算，RTX 4090 24GB，用户终端为Python 3.12，驱动报告610.57.04。仓库沿用 `softwarefresh/Patton`，用户已确认Public，并明确要求数据不加密、直接上传。代码推送到 `patent` 分支，数据与原始中文底座直接放到公开Release附件。
+适用当前机器：优云智算，RTX 4090 24GB，用户终端为Python 3.12，最新驱动报告595.80、CUDA13.2；保留cu124环境方案。仓库沿用 `softwarefresh/Patton`，用户已确认Public，并明确要求数据不加密、直接上传。代码推送到 `patent` 分支，数据与原始中文底座直接放到公开Release附件。
 
 本地已完成：传输包27文件（20个数据/报告文件、7个原始中文底座文件），未压缩2,549,000,484字节，压缩1,095,628,722字节，3个≤512MiB分片，全部文件核验通过。路径为 `D:\dev\Patton\tmp\partner_release`。本次只上传其中3个 `partner-assets.tar.gz.part001/002/003` 和 `partner-transfer.json`，不上传旧的本地警示README。原始数据库、年度CSV、旧模型、词法索引和读取缓存没有打包。
 
@@ -64,7 +64,7 @@ findmnt -T /workspace
 apt-get update
 apt-get install -y git wget tmux
 cd /workspace
-git clone --depth 1 --branch partner-v2-20261026 https://github.com/softwarefresh/Patton.git Patton
+git clone --depth 1 --branch patent https://github.com/softwarefresh/Patton.git Patton
 mkdir -p /workspace/partner_downloads
 cd /workspace/partner_downloads
 wget -c https://github.com/softwarefresh/Patton/releases/download/partner-v2-20261026/partner-transfer.json
@@ -73,7 +73,15 @@ for part in 001 002 003; do
 done
 ```
 
-网络中断可重跑对应wget命令继续下载。clone指定本次版本标签，会显示detached HEAD，这是在使用固定实验版本；无需切换回旧main分支。已有 `/workspace/Patton` 时不要覆盖原目录，先确认它是什么版本，或选一个新的安装目录并同步修改路径。
+网络中断可重跑对应wget命令继续下载。代码使用patent分支获取运行修正，数据固定为partner-v2-20261026版本；开始实验时记录 `git rev-parse HEAD`。已有 `/workspace/Patton` 时不要覆盖原目录，先确认它是什么版本，或选一个新的安装目录并同步修改路径。
+
+若GitHub附件链路只有几KB/s，可停止下载，直接用本机现有完整包上传。在Windows PowerShell执行（地址和端口取自控制台SSH登录命令）：
+
+```powershell
+scp -r -P <端口号> "D:\dev\Patton\tmp\partner_release" root@<服务器地址>:/workspace/
+```
+
+首次主机确认和SSH密码在本机终端交互输入，不将密码放到命令或聊天中。直传后的bundle路径为 `/workspace/partner_release`；下面verify/install命令相应改用该目录。此方式绕过GitHub附件链路，实际速度取决于本机上行和服务器链路。已下载的分片可保留。
 
 ```bash
 cd /workspace/Patton
@@ -91,7 +99,7 @@ bash src/setup_partner_4090.sh
 source /workspace/Patton/.venv_partner4090/bin/activate
 ```
 
-脚本创建项目独立环境，安装 **torch2.6.0 cu124、transformers4.44.2、numpy1.26.4**，检查依赖并在CUDA执行矩阵乘法与反向传播，结果写入 `tmp/server_environment.json`。nvidia-smi显示CUDA13.3是驱动提供的能力，不要求安装CUDA13.3工具链；官方提供的cu124轮子可在兼容新驱动上运行。[PyTorch安装版本](https://docs.pytorch.org/get-started/previous-versions/)、[NVIDIA兼容说明](https://docs.nvidia.com/deploy/cuda-compatibility/610/minor-version-compatibility.html)
+脚本创建项目独立环境，安装 **torch2.6.0 cu124、transformers4.44.2、numpy1.26.4**，检查依赖并在CUDA执行矩阵乘法与反向传播，结果写入 `tmp/server_environment.json`。nvidia-smi显示的CUDA13.x是驱动提供的能力；官方cu124轮子可在兼容新驱动上运行。[PyTorch安装版本](https://docs.pytorch.org/get-started/previous-versions/)、[NVIDIA兼容说明](https://docs.nvidia.com/deploy/cuda-compatibility/latest/why-cuda-compatibility.html)
 
 新终端/新tmux窗口都要再次source环境。如果venv模块缺失，先安装该镜像Python3.12对应的venv组件再重跑；不要退回旧setup.sh。脚本不会更改平台NVIDIA驱动，也不需要faiss、datasets或torchvision。
 
@@ -153,6 +161,8 @@ python -u data_pipeline/partner_dense_baseline.py evaluate \
 ```
 
 无checkpoint的evaluate是原始冻结均值控制；训练仅更新共享投影层、保留全部正例。每轮在完整验证候选池计算Recall@100选best，epoch0也参与比较；如投影未改善，best可以仍是epoch0。测试集不参与选轮次。需要训练后验证结果时可用同一best.pt、`--split val`及新输出文件评测。
+
+训练开头依次输出缓存检查、训练证据聚合、验证证据聚合的stage日志；epoch0为未训练对照，随后为1—10轮。完成时打印status=completed并写入training_summary.json。保存模型只复制权重到CPU，活模型保持在训练设备。本次保存/日志修正不改变编码格式，已有完整partner_vectors可直接复用，只需 `git pull --ff-only origin patent` 更新代码。
 
 为完成同条件控制比较，按预定方案评测原始冻结模型的test一次：
 

@@ -119,6 +119,47 @@ class DenseBaselineTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "validation metrics only"):
             dense.select_validation_checkpoint({"split": "test", "recall@100": 1.0}, 0.1)
 
+    def test_checkpoint_snapshot_keeps_optimizer_attached_under_overwrite_conversion(self):
+        embedding_dir = self.encode()
+        projection_class, optimizer_class = dense.Projection, torch.optim.AdamW
+        captured = {}
+
+        def make_projection(dimension):
+            captured["model"] = projection_class(dimension)
+            return captured["model"]
+
+        def make_optimizer(parameters, *args, **kwargs):
+            captured["optimizer"] = optimizer_class(parameters, *args, **kwargs)
+            captured["initial_weight"] = captured["model"].linear.weight.detach().clone()
+            return captured["optimizer"]
+
+        arguments = SimpleNamespace(data_dir=self.directory, embedding_dir=embedding_dir,
+                                    output_dir=self.directory / "run_conversion_guard",
+                                    epochs=2, batch_size=1, lr=0.01, temperature=0.05, seed=7,
+                                    weight_decay=0.0, device="cpu", eval_batch_size=2)
+        previous_overwrite = torch.__future__.get_overwrite_module_params_on_conversion()
+        previous_swap = torch.__future__.get_swap_module_params_on_conversion()
+        try:
+            # This supported mode replaces Parameter objects even on CPU-only
+            # conversions, exposing optimizer detachment without requiring CUDA.
+            torch.__future__.set_overwrite_module_params_on_conversion(True)
+            torch.__future__.set_swap_module_params_on_conversion(False)
+            with patch.object(dense, "Projection", side_effect=make_projection), \
+                    patch.object(torch.optim, "AdamW", side_effect=make_optimizer), \
+                    contextlib.redirect_stdout(io.StringIO()):
+                dense.train(arguments)
+            live_parameters = tuple(captured["model"].parameters())
+            optimized_parameters = tuple(parameter for group in captured["optimizer"].param_groups
+                                         for parameter in group["params"])
+            self.assertEqual(len(live_parameters), len(optimized_parameters))
+            for live, optimized in zip(live_parameters, optimized_parameters):
+                self.assertIs(live, optimized)
+            self.assertFalse(torch.equal(captured["initial_weight"],
+                                         captured["model"].linear.weight.detach()))
+        finally:
+            torch.__future__.set_overwrite_module_params_on_conversion(previous_overwrite)
+            torch.__future__.set_swap_module_params_on_conversion(previous_swap)
+
     def test_complete_cpu_encode_train_evaluate_and_encoder_stays_frozen(self):
         embedding_dir = self.encode()
         store = dense.EmbeddingStore(embedding_dir, self.directory)
@@ -140,7 +181,8 @@ class DenseBaselineTests(unittest.TestCase):
         arguments = SimpleNamespace(data_dir=self.directory, embedding_dir=embedding_dir, output_dir=output,
                                     epochs=1, batch_size=2, lr=0.001, temperature=0.05, seed=7,
                                     weight_decay=0.01, device="cpu", eval_batch_size=2)
-        with contextlib.redirect_stdout(io.StringIO()):
+        with patch.object(dense.Projection, "cpu", side_effect=AssertionError("Checkpoint must not move the live training model")), \
+                contextlib.redirect_stdout(io.StringIO()):
             dense.train(arguments)
         configuration = dense.read_json(output / "run_config.json")
         self.assertEqual(configuration["selection_split"], "val")
