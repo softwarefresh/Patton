@@ -1,0 +1,5 @@
+# Independent cooperation_v2 frozen-encoder retrieval baseline.
+# Install torch separately from the official cu124 index (see src/setup_partner_4090.sh).
+# This environment is separate from the legacy GraphFormers requirements.txt.
+numpy==1.26.4
+transformers==4.44.2

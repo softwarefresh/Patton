@@ -124,3 +124,9 @@ data_pipeline/企业数据/
 *.xlsx
 *.csv
 *.pdf
+
+# Local transfer packages, derived embeddings, and the independent GPU environment
+/tmp/
+/server_downloads/
+/artifacts/
+/.venv_partner4090/
