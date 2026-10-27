@@ -167,6 +167,7 @@ class EvidenceDataset:
             self.documents[doc_id] = {
                 "applications": application_list(row.get("evidence_application_numbers"), "document evidence"),
                 "company_code": row.get("company_code"),
+                "company_name": row.get("company_name"),
                 "excluded": set(id_list(row.get("excluded_doc_ids", []), "document exclusions")),
             }
         for row in rows(files["histories"]):

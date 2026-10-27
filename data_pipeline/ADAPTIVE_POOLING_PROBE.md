@@ -81,7 +81,8 @@ cat logs/partner_v2/adaptive_pooling.val.summary.md
 - 只使用 `cooperation_v2` 的 train（2022）和 val（2023）；**test 不访问**。
 - 复用 `artifacts/partner_vectors` 的现有冻结向量，不重新编码。
 - 企业类型优先读 `data_pipeline/g_company_pool.csv`（`信用代码 → 类型`）。
-- 如果没有这个 CSV，脚本会从 `data/patent/cooperation_v2/identity/identities.jsonl` 读企业名称，再用名称启发式：含“大学/学院”→高校，含“研究院/研究所/科学院”→科研院所，否则企业；summary 的 `type_source` 会标记 `identity_name_heuristic`。
+- 如果没有这个 CSV，脚本会从 `documents.{train,val}.jsonl` 的 `company_name` 用名称启发式：含“大学/学院”→高校，含“研究院/研究所/科学院”→科研院所，否则企业；summary 的 `type_source` 会标记 `document_name_heuristic`。
+- 如果文档名也缺失，再尝试 `identity/identities.jsonl`；仍缺失则标记 `unknown`。
 - 需要精确类型时，把本地 `data_pipeline/g_company_pool.csv` 上传到服务器同一路径即可；此时 `type_source` 会显示 CSV 路径。
 
 ## 5. 成本与预期

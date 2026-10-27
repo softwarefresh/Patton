@@ -126,7 +126,7 @@ class AdaptivePoolingData:
                 self.n_patents[position] = len(references)
                 document = dataset.documents[doc_id]
                 code = document.get("company_code")
-                name = identity_names.get(code, "") if code else ""
+                name = document.get("company_name") or (identity_names.get(code, "") if code else "")
                 self.company_types.append(company_type(code, name, type_map))
             self.query_ids = sorted(dataset.queries)
             self.queries = torch.from_numpy(np.stack([
@@ -381,16 +381,19 @@ def evaluate(args):
     device = choose_device(args.device)
     type_map, type_map_source = load_type_map(args.type_map)
     identity_names, identity_source = load_identity_names(args.identity_names)
-    if type_map:
-        type_source = type_map_source + ("+identity_fallback" if identity_names else "")
-    elif identity_names:
-        type_source = "identity_name_heuristic"
-    else:
-        type_source = "unknown"
-    print(json.dumps({"stage": "loading_train", "type_source": type_source,
-                      "identity_source": identity_source}), flush=True)
+    type_source = type_map_source + "+name_fallback" if type_map else "pending"
+    print(json.dumps({"stage": "loading_train", "identity_source": identity_source}), flush=True)
     store = EmbeddingStore(args.embedding_dir, args.data_dir)
     train = AdaptivePoolingData(args.data_dir, "train", store, type_map, identity_names, type_source)
+    if not type_map:
+        if any(kind != "未知" for kind in train.company_types):
+            type_source = "document_name_heuristic"
+        elif identity_names:
+            type_source = "identity_name_heuristic"
+        else:
+            type_source = "unknown"
+    train.type_source = type_source
+    print(json.dumps({"stage": "typed_train", "type_source": type_source}), flush=True)
     train_allowed = build_allowed(train)
     print(json.dumps({"stage": "scoring_train"}), flush=True)
     train_mean, train_max = score_mean_max(train, device, args.batch_size)
