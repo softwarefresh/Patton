@@ -1,0 +1,368 @@
+{
+  "status": "completed",
+  "format": "partner_evidence_residual_teacher_v1",
+  "selection_split": "val",
+  "base_validation": {
+    "recall@20": 0.06344061902347824,
+    "recall@100": 0.18382785882011374,
+    "Hit@100": 0.26501154734411086,
+    "P@1": 0.013279445727482679,
+    "MRR@100": 0.029681499497425247,
+    "query_count": 1732,
+    "candidate_count": 20389,
+    "evaluation_candidate_pool": "all_allowed_documents",
+    "gold_used_for_scoring": false,
+    "positive_count": 3112,
+    "split": "val",
+    "encoder_frozen": true,
+    "base_projection_frozen": true,
+    "embedding_manifest_sha256": "435a4ba935b0c20376de550eefb1f4e5224d824c9761ede73880615796c9c5a1",
+    "input_fingerprints": {
+      "tokenization_manifest.json": "019173348c95eae71058714941ce8bc0f89e3ab564bc97f0e78c4036ca505224",
+      "evidence.tokens.jsonl.gz": "466e6d6f048a7823443253e124f0d2c2ac393705510bb2362e06b87742d62847",
+      "evidence.jsonl.gz": "20aaf1fefad3a151329a43e7869a34b85cf07a8e8acd09d92c77b4cecfdd0283",
+      "documents.val.jsonl": "a8774e1669af3e8891bfa7e952ba8c498116ed588f8352ea44557faa045869f6",
+      "histories.val.jsonl": "9a9ac8ae0ad246d1d9d2b5ab6c3b9455141ddab221b176b03d97b64f531ffc13",
+      "queries.val.jsonl": "cbeaf89fb6ff75f9b17855a5ff05a577f52267febc7f571e506be027a0e816ff",
+      "val.pairs.jsonl": "4a1ad05abef8e1bf3c3ac366c138a9163a7c0daf6c8a41cb3b484420e298cb5e",
+      "dataset_manifest.json": "64ab0310fd45cb2d83c389997841a50ff817d5bb9be8d0af841be09163d1b244"
+    }
+  },
+  "variants": {
+    "mean": {
+      "mode": "mean",
+      "best_epoch": 0,
+      "best_validation": {
+        "recall@20": 0.06344061902347824,
+        "recall@100": 0.18382785882011374,
+        "Hit@100": 0.26501154734411086,
+        "P@1": 0.013279445727482679,
+        "MRR@100": 0.029681499497425247,
+        "query_count": 1732,
+        "candidate_count": 20389,
+        "evaluation_candidate_pool": "all_allowed_documents",
+        "gold_used_for_scoring": false,
+        "positive_count": 3112,
+        "split": "val",
+        "encoder_frozen": true,
+        "base_projection_frozen": true,
+        "embedding_manifest_sha256": "435a4ba935b0c20376de550eefb1f4e5224d824c9761ede73880615796c9c5a1",
+        "input_fingerprints": {
+          "tokenization_manifest.json": "019173348c95eae71058714941ce8bc0f89e3ab564bc97f0e78c4036ca505224",
+          "evidence.tokens.jsonl.gz": "466e6d6f048a7823443253e124f0d2c2ac393705510bb2362e06b87742d62847",
+          "evidence.jsonl.gz": "20aaf1fefad3a151329a43e7869a34b85cf07a8e8acd09d92c77b4cecfdd0283",
+          "documents.val.jsonl": "a8774e1669af3e8891bfa7e952ba8c498116ed588f8352ea44557faa045869f6",
+          "histories.val.jsonl": "9a9ac8ae0ad246d1d9d2b5ab6c3b9455141ddab221b176b03d97b64f531ffc13",
+          "queries.val.jsonl": "cbeaf89fb6ff75f9b17855a5ff05a577f52267febc7f571e506be027a0e816ff",
+          "val.pairs.jsonl": "4a1ad05abef8e1bf3c3ac366c138a9163a7c0daf6c8a41cb3b484420e298cb5e",
+          "dataset_manifest.json": "64ab0310fd45cb2d83c389997841a50ff817d5bb9be8d0af841be09163d1b244"
+        }
+      },
+      "trained_residual_selected": false,
+      "base_projection_frozen": true,
+      "trainable_parameters": 131201,
+      "best_checkpoint": {
+        "bytes": 2890154,
+        "sha256": "1d8cc6e413d23d2c23160f6e0f69ab61d1dd5e9a30bc4e694df8ee5714479492"
+      },
+      "last_checkpoint": {
+        "bytes": 2890282,
+        "sha256": "ef036d32feeb987312d161194ebd3d178b8b5f86eaa32741685c2cab0ae62f06"
+      },
+      "last_checkpoint_role": "diagnostic_only_not_validation_selection",
+      "final_epoch": 10,
+      "final_validation": {
+        "recall@20": 0.010464313990302553,
+        "recall@100": 0.03335141657256232,
+        "Hit@100": 0.057736720554272515,
+        "P@1": 0.0017321016166281756,
+        "MRR@100": 0.005092572390962002,
+        "split": "val",
+        "query_count": 1732,
+        "candidate_count": 20389,
+        "positive_count": 3112,
+        "evaluation_candidate_pool": "all_allowed_documents",
+        "gold_used_for_scoring": false,
+        "mean_normalized_attention_entropy": 1.0,
+        "mean_max_attention_weight": 0.13349003623178146,
+        "attention_diagnostics_scope": "all_scored_pairs_including_excluded_candidates"
+      },
+      "head_parameter_delta_l2": 13.5719575881958,
+      "test_accessed": false
+    },
+    "attention": {
+      "mode": "attention",
+      "best_epoch": 0,
+      "best_validation": {
+        "recall@20": 0.06344061902347824,
+        "recall@100": 0.18382785882011374,
+        "Hit@100": 0.26501154734411086,
+        "P@1": 0.013279445727482679,
+        "MRR@100": 0.029681499497425247,
+        "query_count": 1732,
+        "candidate_count": 20389,
+        "evaluation_candidate_pool": "all_allowed_documents",
+        "gold_used_for_scoring": false,
+        "positive_count": 3112,
+        "split": "val",
+        "encoder_frozen": true,
+        "base_projection_frozen": true,
+        "embedding_manifest_sha256": "435a4ba935b0c20376de550eefb1f4e5224d824c9761ede73880615796c9c5a1",
+        "input_fingerprints": {
+          "tokenization_manifest.json": "019173348c95eae71058714941ce8bc0f89e3ab564bc97f0e78c4036ca505224",
+          "evidence.tokens.jsonl.gz": "466e6d6f048a7823443253e124f0d2c2ac393705510bb2362e06b87742d62847",
+          "evidence.jsonl.gz": "20aaf1fefad3a151329a43e7869a34b85cf07a8e8acd09d92c77b4cecfdd0283",
+          "documents.val.jsonl": "a8774e1669af3e8891bfa7e952ba8c498116ed588f8352ea44557faa045869f6",
+          "histories.val.jsonl": "9a9ac8ae0ad246d1d9d2b5ab6c3b9455141ddab221b176b03d97b64f531ffc13",
+          "queries.val.jsonl": "cbeaf89fb6ff75f9b17855a5ff05a577f52267febc7f571e506be027a0e816ff",
+          "val.pairs.jsonl": "4a1ad05abef8e1bf3c3ac366c138a9163a7c0daf6c8a41cb3b484420e298cb5e",
+          "dataset_manifest.json": "64ab0310fd45cb2d83c389997841a50ff817d5bb9be8d0af841be09163d1b244"
+        }
+      },
+      "trained_residual_selected": false,
+      "base_projection_frozen": true,
+      "trainable_parameters": 131201,
+      "best_checkpoint": {
+        "bytes": 2890154,
+        "sha256": "3964bf22581954e285aa88ab7c0c3430d92af8994bd62daf754ad114eb91beec"
+      },
+      "last_checkpoint": {
+        "bytes": 2890282,
+        "sha256": "49511c24d64185af550b1a71624a9ad19abbfa94d8b7083aa31a70f0091a003e"
+      },
+      "last_checkpoint_role": "diagnostic_only_not_validation_selection",
+      "final_epoch": 10,
+      "final_validation": {
+        "recall@20": 0.008812402263333094,
+        "recall@100": 0.025552843628485773,
+        "Hit@100": 0.04387990762124711,
+        "P@1": 0.0017321016166281756,
+        "MRR@100": 0.003931062581633381,
+        "split": "val",
+        "query_count": 1732,
+        "candidate_count": 20389,
+        "positive_count": 3112,
+        "evaluation_candidate_pool": "all_allowed_documents",
+        "gold_used_for_scoring": false,
+        "mean_normalized_attention_entropy": 0.971195354285249,
+        "mean_max_attention_weight": 0.19951057021758212,
+        "attention_diagnostics_scope": "all_scored_pairs_including_excluded_candidates"
+      },
+      "head_parameter_delta_l2": 14.04210090637207,
+      "test_accessed": false
+    }
+  },
+  "attention_minus_base_recall100_pp": 0.0,
+  "attention_minus_mean_control_recall100_pp": 0.0,
+  "attention_beats_base": false,
+  "attention_beats_mean_control": false,
+  "decision": "stop_compression_and_review_teacher",
+  "statistical_significance_established": false,
+  "multi_seed_stability_established": false,
+  "candidate_mode": "dense-hard",
+  "candidate_audit": {
+    "format": "partner_dense_train_candidates_v1",
+    "split": "train",
+    "candidate_policy": "replace_lexical_hard_with_same_count_frozen_base_dense_hard_keep_random_and_all_known_positives",
+    "canonical_pairs_sha256": "2ed5add5fcf86984239404b84ad4096782f3b56619e45458aa3e4c68196d9844",
+    "query_count": 1341,
+    "candidate_count": 16243,
+    "candidate_ordering": "sha256(query_id+NUL+doc_id),doc_id_independent_of_labels",
+    "mining_score": "frozen_mean_projection_cosine_before_training_temperature",
+    "unobserved_items_are_verified_negatives": false,
+    "all_known_positives_retained": true,
+    "canonical_and_new_budgets_equal": true,
+    "val_accessed": false,
+    "test_accessed": false,
+    "coverage": {
+      "canonical": {
+        "top20": 0.05480984340044743,
+        "top100": 0.02751677852348993
+      },
+      "new": {
+        "top20": 0.8007829977628634,
+        "top100": 0.16082774049217002
+      }
+    },
+    "coverage_denominator": "macro mean of intersection_size/min(k,eligible_unobserved_count); zero if none",
+    "coverage_rank_pool": "all_history_allowed_companies_excluding_all_known_positives_including_retained_random",
+    "score_summary": {
+      "canonical_unobserved": {
+        "count": 42912,
+        "min": 0.2490069568157196,
+        "q25": 0.7607554793357849,
+        "median": 0.837105393409729,
+        "q75": 0.8949408382177353,
+        "max": 0.9804203510284424,
+        "mean": 0.81690917548145,
+        "sum": 35055.20653825998
+      },
+      "new_unobserved": {
+        "count": 42912,
+        "min": 0.2490069568157196,
+        "q25": 0.7841711938381195,
+        "median": 0.9088157117366791,
+        "q75": 0.9506608545780182,
+        "max": 0.9823967218399048,
+        "mean": 0.8579034247907193,
+        "sum": 36814.35176461935
+      },
+      "positives": {
+        "count": 2418,
+        "min": 0.720082700252533,
+        "q25": 0.8881540447473526,
+        "median": 0.9196496307849884,
+        "q75": 0.9427649080753326,
+        "max": 0.9818862676620483,
+        "mean": 0.9111596486408716,
+        "sum": 2203.1840304136276
+      },
+      "all_allowed_unobserved": {
+        "count": 21667495,
+        "min": 0.059110842645168304,
+        "max": 0.9823967218399048,
+        "mean": 0.7682663176742468
+      }
+    },
+    "positive_full_pool_rank_summary": {
+      "count": 2418,
+      "min": 1.0,
+      "q25": 86.0,
+      "median": 353.5,
+      "q75": 1200.5,
+      "max": 13364.0,
+      "mean": 1063.9210090984284,
+      "sum": 2572561.0
+    },
+    "positive_minus_100th_allowed_score_summary": {
+      "count": 2418,
+      "min": -0.22502022981643677,
+      "q25": -0.04058326780796051,
+      "median": -0.014511346817016602,
+      "q75": 0.001362919807434082,
+      "max": 0.11586099863052368,
+      "mean": -0.02359095343979456,
+      "sum": -57.04292541742325
+    },
+    "score_boundary_definition": "score at min(100,allowed_candidate_count); positives remain in allowed pool",
+    "base_full_training_metrics": {
+      "recall@20": 0.14085523247109008,
+      "recall@100": 0.3046028792510549,
+      "Hit@100": 0.3989560029828486,
+      "P@1": 0.0343027591349739,
+      "MRR@100": 0.06776594162676873,
+      "split": "train",
+      "query_count": 1341,
+      "candidate_count": 16243,
+      "positive_count": 2418,
+      "evaluation_candidate_pool": "all_allowed_documents",
+      "gold_used_for_scoring": false
+    },
+    "canonical_candidate_count": {
+      "count": 1341,
+      "min": 33.0,
+      "q25": 33.0,
+      "median": 33.0,
+      "q75": 34.0,
+      "max": 70.0,
+      "mean": 33.80313199105145,
+      "sum": 45330.0
+    },
+    "new_candidate_count": {
+      "count": 1341,
+      "min": 33.0,
+      "q25": 33.0,
+      "median": 33.0,
+      "q75": 34.0,
+      "max": 70.0,
+      "mean": 33.80313199105145,
+      "sum": 45330.0
+    },
+    "canonical_negative_count": {
+      "count": 1341,
+      "min": 32.0,
+      "q25": 32.0,
+      "median": 32.0,
+      "q75": 32.0,
+      "max": 32.0,
+      "mean": 32.0,
+      "sum": 42912.0
+    },
+    "new_negative_count": {
+      "count": 1341,
+      "min": 32.0,
+      "q25": 32.0,
+      "median": 32.0,
+      "q75": 32.0,
+      "max": 32.0,
+      "mean": 32.0,
+      "sum": 42912.0
+    },
+    "replaced_hard_count": {
+      "count": 1341,
+      "min": 16.0,
+      "q25": 16.0,
+      "median": 16.0,
+      "q75": 16.0,
+      "max": 16.0,
+      "mean": 16.0,
+      "sum": 21456.0
+    },
+    "retained_random_count": {
+      "count": 1341,
+      "min": 16.0,
+      "q25": 16.0,
+      "median": 16.0,
+      "q75": 16.0,
+      "max": 16.0,
+      "mean": 16.0,
+      "sum": 21456.0
+    },
+    "positive_count": {
+      "count": 1341,
+      "min": 1.0,
+      "q25": 1.0,
+      "median": 1.0,
+      "q75": 2.0,
+      "max": 38.0,
+      "mean": 1.803131991051454,
+      "sum": 2418.0
+    },
+    "eligible_unobserved_count": {
+      "count": 1341,
+      "min": 15614.0,
+      "q25": 16225.0,
+      "median": 16238.0,
+      "q75": 16240.0,
+      "max": 16241.0,
+      "mean": 16157.714392244594,
+      "sum": 21667495.0
+    },
+    "derived_candidate_fingerprint": {
+      "bytes": 1076959,
+      "sha256": "5806eb004fdc25236241c5e3e173979bf49097bac129bff288e521ab9f7418f9"
+    },
+    "base_checkpoint": {
+      "bytes": 2362957,
+      "sha256": "5056b7f11cbcfa8c2dde1898002311d529ba0eb8878b0120f018065393716887"
+    },
+    "embedding_manifest_sha256": "435a4ba935b0c20376de550eefb1f4e5224d824c9761ede73880615796c9c5a1",
+    "source_fingerprints": {
+      "tokenization_manifest.json": "019173348c95eae71058714941ce8bc0f89e3ab564bc97f0e78c4036ca505224",
+      "evidence.tokens.jsonl.gz": "466e6d6f048a7823443253e124f0d2c2ac393705510bb2362e06b87742d62847",
+      "evidence.jsonl.gz": "20aaf1fefad3a151329a43e7869a34b85cf07a8e8acd09d92c77b4cecfdd0283",
+      "documents.train.jsonl": "91b48d73df987e40a41be83ad808ba618fd7f62b08976ff4a600f02e4e164e65",
+      "histories.train.jsonl": "5a3fecad1692a096d205d4b518cb4b2bfc91ac0130d3dcbf9c0c530a64be33e2",
+      "queries.train.jsonl": "7f9a404664410752576db7c220182d790e78d54a6bef948cbef7d90666c04435",
+      "train.pairs.jsonl": "2ed5add5fcf86984239404b84ad4096782f3b56619e45458aa3e4c68196d9844",
+      "dataset_manifest.json": "64ab0310fd45cb2d83c389997841a50ff817d5bb9be8d0af841be09163d1b244"
+    },
+    "bounded_residual_per_candidate": 0.25,
+    "maximum_pairwise_score_shift_from_residual": 0.5,
+    "training_temperature": 0.05,
+    "maximum_pairwise_logit_shift_from_residual": 10.0
+  },
+  "test_accessed": false,
+  "innovation_model_trained": false,
+  "elapsed_seconds": 487.738
+}

@@ -1,0 +1,36 @@
+{
+  "date_local": "2026-10-27",
+  "status": "read_only_calibration_cpu_checks_passed_server_calibration_not_run",
+  "base_git_commit": "ee854e1",
+  "isolated_source_file_count": 28,
+  "isolated_cpu_test_count": 74,
+  "isolated_cpu_test_elapsed_seconds": 16.392,
+  "calibration_specific_tests": 7,
+  "bash_syntax_check_passed": true,
+  "cli_help_passed": true,
+  "fixed_alphas": [
+    0.0,
+    0.01,
+    0.03,
+    0.1,
+    0.3,
+    1.0
+  ],
+  "test_scope": "CPU fake-encoder fixtures; no-optimizer/no-test and no input mutation; endpoint/interior scoring, source/role/weight/candidate bindings and output protection",
+  "server_calibration_performed": false,
+  "additional_server_training_or_test_evaluation_performed": false,
+  "files": {
+    "data_pipeline/partner_teacher_calibration.py": {
+      "bytes": 22252,
+      "sha256": "0d9487acfc96feb7e4eb302d714fb0cf716059a148e7b80c9115d3783dc1ea0a"
+    },
+    "tests/test_partner_teacher_calibration.py": {
+      "bytes": 16292,
+      "sha256": "737cb591a781a682314d83f6b67664aa9f4aaa8b478fefecba6a05185a426740"
+    },
+    "src/run_partner_teacher_calibration.sh": {
+      "bytes": 1445,
+      "sha256": "0043f565b5b33b3a34084eb3a8e05695319249c1f4d426b4e827956ddf63c792"
+    }
+  }
+}

@@ -1,0 +1,63 @@
+{
+  "date_local": "2026-10-27",
+  "status": "dense_candidate_intervention_negative_for_validation_recall100",
+  "provenance": "User terminal JSON; checkpoints, derived training list and complete server histories not independently retrieved",
+  "source_attachment_sha256": "902def7911dd8b89f4db74873e2743a944c33a01e59dd1dc74639f3e2f8caea8",
+  "checked_unique_canonical_input_hashes": {
+    "tokenization_manifest.json": true,
+    "evidence.tokens.jsonl.gz": true,
+    "evidence.jsonl.gz": true,
+    "documents.val.jsonl": true,
+    "histories.val.jsonl": true,
+    "queries.val.jsonl": true,
+    "val.pairs.jsonl": true,
+    "dataset_manifest.json": true,
+    "documents.train.jsonl": true,
+    "histories.train.jsonl": true,
+    "queries.train.jsonl": true,
+    "train.pairs.jsonl": true
+  },
+  "reported_fingerprint_sets": {
+    "validation": 8,
+    "training": 8,
+    "unique_files": 12
+  },
+  "base_validation_reproduces_previous_report": true,
+  "reported_training_candidate_coverage_top20": {
+    "canonical": {
+      "top20": 0.05480984340044743,
+      "top100": 0.02751677852348993
+    },
+    "new": {
+      "top20": 0.8007829977628634,
+      "top100": 0.16082774049217002
+    }
+  },
+  "coverage_improvement_is_candidate_construction_property_not_model_effectiveness": true,
+  "selected_epochs": {
+    "mean": 0,
+    "attention": 0
+  },
+  "final_validation_recall100": {
+    "mean": 0.03335141657256232,
+    "attention": 0.025552843628485773
+  },
+  "head_parameter_delta_l2": {
+    "mean": 13.5719575881958,
+    "attention": 14.04210090637207
+  },
+  "reported_elapsed_seconds": 487.738,
+  "derived_candidate_file_independently_verified": false,
+  "conclusion": "Replacing lexical hard items with dense hard items did not yield a trained epoch beating the original projection on validation Recall@100 in this run. It does not establish which other causes dominate or refute all evidence-set models.",
+  "decision": "Stop further training of these heads and keep compression/distillation paused; one fixed-grid validation-only calibration diagnostic on existing last checkpoints before closing this implementation.",
+  "predeclared_diagnostic_alphas": [
+    0.0,
+    0.01,
+    0.03,
+    0.1,
+    0.3,
+    1.0
+  ],
+  "calibration_is_exploratory_validation_selection_not_independent_efficacy_evidence": true,
+  "formal_test_evaluation_or_new_training_performed": false
+}

@@ -298,4 +298,32 @@ cat /workspace/Patton/ckpt/partner_teacher/dense1/comparison.json
 
 保存 `training_candidates.jsonl`、`candidate_audit.json` 及其指纹；原canonical文件不改。新运行额外保留每头的last.pt和参数变化范数，末轮权重仅供诊断，不能绕过best.pt的验证集选择。新旧两次比较回答的是本次“词法困难项→稠密困难项”策略是否改善结果，单seed不能证明普遍增益。
 
-若仍未超过原投影，继续停止压缩蒸馏，先重新评估教师路线。当前仅准备了该干预入口，尚未获得其真实4090结果。
+若仍未超过原投影，继续停止压缩蒸馏，先重新评估教师路线。本次干预已经完成且未超过原投影，结果与下一步见第13节。
+
+## 13. dense1仍无收益：停止新训练，最后一次只读校准诊断
+
+dense1已经回传completed：两种模式仍回退epoch0的18.38% R100，末轮只有3.34%/2.56%。16项稠密候选已替换生效，但没有产生超过原投影的训练轮次。当前停止继续训练这两个教师，压缩蒸馏暂停。
+
+最后仅用现有last.pt做一次验证集诊断。它保留原投影基础分，分别叠加0%、1%、3%、10%、30%、100%的已训练残差；两种头同一固定六档，完整val候选池评估。0%必须复现原基线，100%必须复现对应末轮，否则先停下检查。实际残差分布也会统计，避免拿理论±0.25上限直接认定根因。
+
+服务器执行：
+
+```bash
+cd /workspace/Patton
+git pull --ff-only origin patent
+bash src/run_partner_teacher_calibration.sh dense1
+```
+
+脚本后台读取已有缓存/权重，不执行反向传播、不创建optimizer、不改checkpoint，不使用test。查看进度：
+
+```bash
+tail -f /workspace/Patton/logs/partner_v2/teacher_dense1.calibration.log
+```
+
+完成后回传：
+
+```bash
+cat /workspace/Patton/logs/partner_v2/teacher_dense1.calibration.val.json
+```
+
+报告的最佳alpha是在val上选出的探索性结果，不是独立验证或显著性结论。若所有非零档均未超过基础R100，关闭当前教师实现路线；若小档有收益，只能说明有校准线索，仍不据此启动压缩蒸馏。原始best.pt保持不动。
