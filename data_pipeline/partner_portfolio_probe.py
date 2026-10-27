@@ -31,7 +31,13 @@ from partner_evidence_dataset import EvidenceDataset, require
 
 
 FORMAT = "partner_portfolio_probe_v1"
-QUERY_POOLING = "first6_raw_mean_l2"
+QUERY_MODES = ("first6", "center", "center_history5")
+QUERY_POOLING_BY_MODE = {
+    "first6": "first6_raw_mean_l2",
+    "center": "center_raw_l2",
+    "center_history5": "0.5_center_plus_0.5_history5_raw_l2",
+}
+QUERY_POOLING = QUERY_POOLING_BY_MODE["first6"]
 COMPANY_POOLING = "group_mean_l2"
 EVIDENCE_SLOTS = 20
 POSITIVE_THRESHOLDS = (0.25, 1.0 / 3.0, 0.5)
@@ -387,6 +393,18 @@ def fmt(value, digits=4):
     return "n/a" if value is None else "{:.{}f}".format(value, digits)
 
 
+def build_query_vector(store, patents, query_mode):
+    """Pool the query side without touching candidate representations."""
+    require(query_mode in QUERY_MODES, "Unknown query mode: " + str(query_mode))
+    if query_mode == "first6":
+        return store.mean(patents[:6])
+    center = store.mean(patents[:1])
+    if query_mode == "center":
+        return center
+    history = store.mean(patents[1:6]) if len(patents) > 1 else center
+    return 0.5 * center + 0.5 * history
+
+
 def bootstrap_ci(left, right, iterations, seed):
     left = np.asarray(left, dtype=np.float64)
     right = np.asarray(right, dtype=np.float64)
@@ -419,8 +437,9 @@ def bootstrap_ci(left, right, iterations, seed):
 class PortfolioProbeData:
     """Frozen candidate evidence plus IPC metadata for the val split."""
 
-    def __init__(self, data_dir, split, store):
+    def __init__(self, data_dir, split, store, query_mode="first6"):
         require(split == "val", "Portfolio probe is validation-only")
+        require(query_mode in QUERY_MODES, "Unknown query mode: " + str(query_mode))
         require((Path(data_dir) / "dataset_manifest.json").is_file(), "Canonical dataset_manifest.json is required")
         with EvidenceDataset(data_dir, split) as dataset:
             self.fingerprints = dict(dataset.fingerprints)
@@ -452,7 +471,11 @@ class PortfolioProbeData:
                 self.n_patents[position] = len(references)
             self.query_ids = sorted(dataset.queries)
             self.queries = torch.from_numpy(np.stack([
-                store.mean(dataset.histories[dataset.queries[qid]["source"]]["patents"][:6])
+                build_query_vector(
+                    store,
+                    dataset.histories[dataset.queries[qid]["source"]]["patents"],
+                    query_mode,
+                )
                 for qid in self.query_ids
             ]))
             self.targets = {qid: set(dataset.queries[qid]["positives"]) for qid in self.query_ids}
@@ -466,6 +489,8 @@ class PortfolioProbeData:
         require(int(self.mask.sum()) == int(self.n_patents.sum()), "Evidence mask count mismatch")
         self.evidence_count = int(self.mask.sum().item())
         self.manifest_sha256 = store.manifest_sha256
+        self.query_mode = query_mode
+        self.query_pooling = QUERY_POOLING_BY_MODE[query_mode]
 
 
 def evaluate_representation(data, representation, evidence_device, device, args, temperatures, strata):
@@ -640,6 +665,7 @@ def summary_markdown(payload):
         "- 候选数：{}".format(payload["candidate_count"]),
         "- 正例数：{}".format(payload["positive_count"]),
         "- 候选证据向量：{}（每企业至多 20）".format(payload["evidence_vector_count"]),
+        "- 查询模式：{}".format(payload.get("query_mode", "first6")),
         "- 查询表示：{}".format(payload.get("query_pooling", "n/a")),
         "- embedding manifest：`{}`".format(payload["embedding_manifest_sha256"]),
         "",
@@ -648,7 +674,11 @@ def summary_markdown(payload):
     ]
     checks = payload.get("baseline_reproduction", [])
     if not checks:
-        lines.append("- 未提供基线复现检查。")
+        mode = payload.get("query_mode", "first6")
+        if mode == "first6":
+            lines.append("- 未提供预期基线值，跳过复现检查。")
+        else:
+            lines.append("- 查询模式为 {}，不做 first6 预期基线复现检查；实际值见主表。".format(mode))
     for check in checks:
         lines.append(
             "- {}：actual={} expected={} passed={}".format(
@@ -764,7 +794,7 @@ def evaluate(args):
     print(json.dumps({"stage": "checking_original_embedding_cache"}), flush=True)
     store = EmbeddingStore(args.embedding_dir, args.data_dir)
     print(json.dumps({"stage": "loading_validation_evidence"}), flush=True)
-    data = PortfolioProbeData(args.data_dir, args.split, store)
+    data = PortfolioProbeData(args.data_dir, args.split, store, query_mode=args.query_mode)
     print(json.dumps({"stage": "building_method_independent_strata"}), flush=True)
     strata = build_positive_strata(data)
     evidence_device = data.evidence.to(device)
@@ -781,12 +811,12 @@ def evaluate(args):
             "variants": variants,
         }
         arrays[representation] = variant_arrays
-        if representation == "mean":
+        if representation == "mean" and args.query_mode == "first6":
             checks.append(baseline_check(
                 "mean/max R@100", variants["max"]["metrics"]["recall@100"],
                 args.expected_mean_r100, args.reproduction_tolerance,
             ))
-        if representation == "per_patent":
+        if representation == "per_patent" and args.query_mode == "first6":
             checks.append(baseline_check(
                 "per_patent/max R@100", variants["max"]["metrics"]["recall@100"],
                 args.expected_fullmax_r100, args.reproduction_tolerance,
@@ -797,7 +827,8 @@ def evaluate(args):
     payload = {
         "format": FORMAT,
         "split": "val",
-        "query_pooling": QUERY_POOLING,
+        "query_mode": args.query_mode,
+        "query_pooling": data.query_pooling,
         "company_pooling": COMPANY_POOLING,
         "query_count": len(data.query_ids),
         "candidate_count": len(data.doc_ids),
@@ -864,6 +895,18 @@ def self_test():
     check(parse_ipc_subclasses("G06T5/00; G06T3/40") == ("G06T",), "IPC parsing")
     check(patent_bucket(2) == "2-5" and patent_bucket(10) == "6-10" and patent_bucket(11) == "11-20",
           "patent buckets")
+
+    class FakeStore:
+        def mean(self, references):
+            return np.array([float(len(references)), 0.0], dtype=np.float32)
+
+    patents = [1, 2, 3, 4, 5, 6]
+    check(np.allclose(build_query_vector(FakeStore(), patents, "first6"), [6.0, 0.0]),
+          "first6 query")
+    check(np.allclose(build_query_vector(FakeStore(), patents, "center"), [1.0, 0.0]),
+          "center query")
+    check(np.allclose(build_query_vector(FakeStore(), patents, "center_history5"), [3.0, 0.0]),
+          "center_history5 query")
     queries = torch.tensor([[1.0, 0.0]])
     vectors = F.normalize(torch.tensor([
         [[1.0, 0.0], [0.0, 1.0]],
@@ -880,7 +923,7 @@ def self_test():
     check(int(torch.isfinite(scores["max"]).sum()) == 1, "masked group handling")
     ci = bootstrap_ci(np.array([1.0, 0.0]), np.array([1.0, 0.0]), 50, 1)
     check(ci["mean_difference"] == 0.0 and ci["ci_low"] == 0.0 and ci["ci_high"] == 0.0, "bootstrap null")
-    print(json.dumps({"status": "passed", "checks": 15}), flush=True)
+    print(json.dumps({"status": "passed", "checks": 18}), flush=True)
 
 
 def main():
@@ -890,6 +933,7 @@ def main():
     evaluate_parser.add_argument("--data-dir", type=Path, required=True)
     evaluate_parser.add_argument("--embedding-dir", type=Path, required=True)
     evaluate_parser.add_argument("--split", choices=("val",), default="val")
+    evaluate_parser.add_argument("--query-mode", choices=QUERY_MODES, default="first6")
     evaluate_parser.add_argument("--output", type=Path, required=True)
     evaluate_parser.add_argument("--summary-output", type=Path)
     evaluate_parser.add_argument("--device", default="cuda")

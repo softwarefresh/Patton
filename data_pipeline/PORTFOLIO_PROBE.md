@@ -1,6 +1,14 @@
 # 企业多技术方向表示探针（val-only）
 
-状态：代码已准备，尚未在服务器运行。本文记录 2026-10-27 的 go/no-go 探针设计；它不是已验证的创新结果。
+状态：第一轮已在服务器完成（2026-10-27），判定 `no_reliable_signal`；query 侧诊断待跑。本文记录 go/no-go 探针设计、第一轮结果和下一步；它不是已验证的创新结果。
+
+## 第一轮结果（2026-10-27，val）
+
+- 两个基线精确复现：`mean/max` R@100 = 0.16352341，`per_patent/max` = 0.07686405。
+- 最好的 IPC 多方向版本 `ipc_rare/max` R@100 = 0.1481，比均值低 1.54 个百分点（bootstrap CI 下界 −0.0291）；`ipc_top4/max` = 0.1474。
+- IPC 分组相对随机同尺寸分组仅 +0.19～+0.49 个百分点，CI 跨 0；分类分组没有显著独立价值。
+- 少数方向损失较小（`ipc_rare/max`：少数 −1.05 pt vs 多数 −4.04 pt），但绝对召回仍低于均值（17.48% vs 18.52%）；这是“没那么差”，不是“更好”。
+- 结论：不启动训练版、压缩蒸馏或删除响应保持。先做 query 侧诊断，排除 first-6 均值稀释焦点专利的混淆。
 
 ## 要回答的问题
 
@@ -57,6 +65,15 @@ nohup bash src/run_partner_portfolio_probe.sh > logs/partner_v2/portfolio_probe.
 tail -f logs/partner_v2/portfolio_probe.log
 ```
 
+运行脚本的第二个参数是查询模式（默认 `first6`）：
+
+```bash
+# 中心专利查询
+nohup bash src/run_partner_portfolio_probe.sh logs/partner_v2/portfolio_probe.center.val.json center > logs/partner_v2/portfolio_probe.center.log 2>&1 &
+# 中心专利 + 5 篇历史
+nohup bash src/run_partner_portfolio_probe.sh logs/partner_v2/portfolio_probe.center_history5.val.json center_history5 > logs/partner_v2/portfolio_probe.center_history5.log 2>&1 &
+```
+
 默认输出：
 
 - `logs/partner_v2/portfolio_probe.val.json`：完整结果；
@@ -87,6 +104,9 @@ tail -f logs/partner_v2/portfolio_probe.log
 
 按以下顺序决定是否继续：
 
-1. 检查查询侧：用中心专利向量替代 first-6 均值做一次只读对照；若查询侧变化就改变了基线，应先解决查询表示，而不是继续加候选原型。
+1. **查询侧诊断（已纳入脚本）**：用中心专利或“中心 + 5 篇历史”替代 first-6 均值，只读重跑同一套候选表示。
+   - 若中心查询下均值基线明显变化，说明 first-6 均值确实稀释了焦点专利；此时先解决查询表示，而不是继续加候选原型。
+   - 若中心查询下 IPC 分组仍不胜均值和随机分组，停止这条路线。
+   - 非 first6 模式不做预期基线复现检查；直接比较主表中的 `mean` 和 `ipc_*` 行。
 2. 加入 k-means/文本聚类原型，判断 IPC 分组是否只是分组方式之一。
 3. 若 IPC 分组仍不胜随机分组，停止“多技术方向表示”作为创新主线，保留为工程分析。
