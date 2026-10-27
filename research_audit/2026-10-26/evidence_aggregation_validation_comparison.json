@@ -1,0 +1,66 @@
+{
+  "date_local": "2026-10-26",
+  "protocol": "patent_conditioned_observed_partner_v2.0",
+  "status": "reported_validation_metrics_recorded_and_max_input_hashes_checked",
+  "split": "val",
+  "result_provenance": "Transcribed from user-supplied server terminal output; server files and vectors not independently retrieved",
+  "source_attachment_filename": "已粘贴的文本.txt",
+  "source_attachment_sha256": "9ebf856455f472582a58b8904a50513d82e73a4414958a493874f0ef4ee47c17",
+  "reported_server_code_commit": "03d8a22",
+  "reported_input_fingerprints_verified_against_local_files": {
+    "tokenization_manifest.json": true,
+    "evidence.tokens.jsonl.gz": true,
+    "evidence.jsonl.gz": true,
+    "documents.val.jsonl": true,
+    "histories.val.jsonl": true,
+    "queries.val.jsonl": true,
+    "val.pairs.jsonl": true,
+    "dataset_manifest.json": true
+  },
+  "fullmax_embedding_manifest_matches_previous_server_report": true,
+  "frozen_mean_source": "ckpt/partner_dense/run1/training_history.json: history[0][validation]",
+  "frozen_mean_epoch0_is_identity_projection_verified_in_local_code": true,
+  "frozen_mean_extract_contains_fingerprints": false,
+  "frozen_mean_server_run_config_independently_retrieved": false,
+  "query_count": 1732,
+  "candidate_count": 20389,
+  "positive_count": 3112,
+  "fullmax_evidence_occurrences": 236949,
+  "methods": {
+    "frozen_mean_epoch0": {
+      "recall@20": 0.07067660261310629,
+      "recall@100": 0.16352341425902947,
+      "Hit@100": 0.2338337182448037,
+      "P@1": 0.017321016166281754,
+      "MRR@100": 0.0348647309925268
+    },
+    "frozen_evidence_max": {
+      "recall@20": 0.02930172097003056,
+      "recall@100": 0.0768640544991725,
+      "Hit@100": 0.11143187066974596,
+      "P@1": 0.009237875288683603,
+      "MRR@100": 0.015538384724672566
+    }
+  },
+  "max_minus_mean_percentage_points": {
+    "recall@20": -4.137488164307573,
+    "recall@100": -8.665935975985697,
+    "Hit@100": -12.240184757505775,
+    "P@1": -0.8083140877598152
+  },
+  "max_minus_mean_mrr@100": -0.019326346267854233,
+  "queries_with_hit@100": {
+    "frozen_mean_epoch0": 405,
+    "frozen_evidence_max": 193
+  },
+  "queries_with_top1_hit": {
+    "frozen_mean_epoch0": 30,
+    "frozen_evidence_max": 16
+  },
+  "interpretation": "Direct untrained maximum cosine aggregation underperforms mean on all five reported validation metrics; this does not establish why, or rule out trained evidence interaction or fixed-budget prototypes",
+  "fixed_index_budget_comparison": false,
+  "significance_test_performed": false,
+  "additional_test_evaluation_performed": false,
+  "innovation_model_trained": false,
+  "next_preplanned_step": "Implement and validate a lightweight evidence interaction teacher against mean/max and the trained projection control before compression or deletion-response distillation"
+}

@@ -181,9 +181,11 @@ python -u data_pipeline/partner_dense_baseline.py evaluate \
 
 本轮保留：`tmp/server_environment.json`、`tmp/partner_environment_freeze.txt`、`ckpt/partner_dense/run1/` 下的run_config/training_history/training_summary/best.pt，以及 `logs/partner_v2/` 评测报告。记录服务器 `git rev-parse HEAD`。将这些结果下载回本机或复制到确认的持久化存储，之后再处理实例。没有使用含后续数据的旧checkpoint。
 
-本地检查覆盖CPU小样本端到端、标签隔离、多正例、缓存指纹、打包/解包及拒绝异常输入。用户已经回传4090数据安装、64篇检查、434,047篇正式编码及投影run1训练/测试成功日志；实际结果见比较报告。下面新增逐篇max对照目前只有CPU检查，尚待真实验证集运行。
+本地检查覆盖CPU小样本端到端、标签隔离、多正例、缓存指纹、打包/解包及拒绝异常输入。用户已经回传4090数据安装、64篇检查、434,047篇正式编码及投影run1训练/测试成功日志；实际结果见比较报告。逐篇max也已在完整验证集运行，结果见下一节，已有输出无需重跑。
 
 ## 9. 预先规划的逐篇证据对照：先验证集
+
+**2026-10-26已完成**：逐篇max的val Recall@100=7.69%，冻结均值epoch0=16.35%；Recall@20=2.93%/7.07%，Hit@100=11.14%/23.38%，P@1=0.92%/1.73%，MRR@100=0.01554/0.03486。8项max输入指纹已与本机核对。详见 [验证集比较报告](../research_audit/2026-10-26/evidence_aggregation_validation_comparison.md)。下面命令保留用于复现；当前服务器已有fullmax.val.json时不再执行。
 
 已有完整partner_vectors后，不需要再次编码或训练。逐篇max将候选每篇专利分别归一，取查询与真实专利向量的最大余弦；query仍使用前6篇原始向量均值。不加载投影checkpoint，用于和原始冻结均值对照。它保留至多20向量/企业，是未压缩参照，不能作为同索引预算的创新增益或数学性能上界。
 
@@ -199,3 +201,43 @@ git pull --ff-only origin patent
 ```
 
 本轮只看验证集，不重跑已经完成的两种测试方法，也不据测试成绩调参。对照目标在10月15日方法评审中已经提出；先验证完整证据的均值/max及交互教师，再决定是否进入固定R预算压缩和删除响应保持。实际测试结果汇总见 `research_audit/2026-10-26/retrieval_baseline_comparison.md`。
+
+本次max在五项验证指标均低于均值，尚不能确定退化原因，也不能据此排除训练过的证据交互。下一项是实现并检验轻量证据交互教师，在完整val候选池与均值/max及已有训练投影对照；若教师没有优势，先停止压缩蒸馏。截至本次max验证时教师尚未实现；10月27日新增入口见下一节，创新模型仍未实现/训练。
+
+## 10. 下一步：教师与同结构均值对照（2026-10-27）
+
+本节入口现已实现，尚待服务器实际运行。沿用现有venv、完整向量和dense run1/best.pt。它冻结原投影，训练一个小证据头；同一命令顺序跑均值聚合和注意力聚合两个版本，各10轮，seed42、候选与参数量相同，完整验证池Recall100选best，包含零残差epoch0。仅用train/val；这是冻结BERT缓存上的交互可行性验证，还不是训练过的GraphFormers或固定预算贡献保持模型。
+
+在服务器终端依次执行：
+
+```bash
+cd /workspace/Patton
+git pull --ff-only origin patent
+bash src/run_partner_teacher.sh
+```
+
+脚本自动后台启动并显示PID、日志和结果路径。它使用项目venv的绝对路径，无需重新激活环境。已有run1或日志会拒绝覆盖；先检查原任务状态，不要盲目换名重复开跑。它不会重新编码、安装依赖或读取test分割。
+
+查看日志：
+
+```bash
+tail -f /workspace/Patton/logs/partner_v2/teacher_run1.log
+```
+
+依次应看到 `checking_original_embedding_cache`、加载train/val证据、`base_validation`、`preflight` passed、mean的epoch0—10、attention的epoch0—10，最后 `status: completed`。`base_validation` 的Recall100应接近之前投影验证的18.38%；完整候选数应为20,389，查询1,732，正例3,112。每轮会输出loss和验证指标，耗时需以这次真实GPU运行为准。Ctrl+C仅退出tail，后台训练继续。
+
+结束后把下面命令输出粘贴回来：
+
+```bash
+cat /workspace/Patton/ckpt/partner_teacher/run1/comparison.json
+```
+
+主要看 `attention_beats_base` 和 `attention_beats_mean_control` 是否同时为true，以及R20/P1/MRR有没有退化。即使两项都为true，也只是单seed初筛，先复核稳定性再考虑压缩；未胜过则先停压缩蒸馏。保留best及完整history，后续不根据已知test分数调这个头。
+
+如果日志出现Traceback、CUDA错误或长时间无进度，先回传末80行，不重跑旧编码：
+
+```bash
+tail -n 80 /workspace/Patton/logs/partner_v2/teacher_run1.log
+```
+
+入口会检查完整缓存、baseline checkpoint及train/val输入指纹，检查失败时保留现有输出和日志便于排查。当前只有CPU模型/集成检查通过，不能据此声称4090教师训练已通过。

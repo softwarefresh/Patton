@@ -1,0 +1,13 @@
+{
+  "recall@20": 0.07067660261310629,
+  "recall@100": 0.16352341425902947,
+  "Hit@100": 0.2338337182448037,
+  "P@1": 0.017321016166281754,
+  "MRR@100": 0.0348647309925268,
+  "query_count": 1732,
+  "candidate_count": 20389,
+  "evaluation_candidate_pool": "all_allowed_documents",
+  "gold_used_for_scoring": false,
+  "positive_count": 3112,
+  "split": "val"
+}

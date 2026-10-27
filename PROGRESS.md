@@ -2,7 +2,16 @@
 
 > 本文件记录实验流水线的当前状态，跨会话维护。新开会话先读这里。
 > **完整实验全景（任务/数据/设计/结果/资产/教训）见 [EXPERIMENTS.md](EXPERIMENTS.md)——新接手者先读那个。**
-> 最近更新：2026-10-26（基线测试完成：投影/冻结均值/BM25的Recall100为15.01%/14.01%/12.08%；投影Top20/MRR退化，下一步仅验证集检查逐篇证据最大匹配，创新模型仍未训练）
+> 最近更新：2026-10-27（轻量证据交互教师及同结构均值对照已实现，CPU检查通过，待4090配对验证；逐篇max验证Recall100为7.69%，低于冻结均值16.35%。固定预算压缩与贡献保持创新机制仍未实现/训练）
+
+## 轻量证据交互教师：配对可行性实验（2026-10-27）
+
+- 用户授权由我决定下一步并提供服务器操作指导。新增 `partner_evidence_teacher.py train-pair` 和 `partner_evidence_teacher_model.py`：复用完整434,047篇缓存，冻结既有 `ckpt/partner_dense/run1/best.pt` 投影作为基础分数；另训共享768→128投影、集合聚合及512→64→1小MLP，残差为0.25*tanh(MLP)，末层零初始化，epoch0复现原投影。
+- **同一命令依次训练mean/attention两个残差头**：参数数目、初始化seed42、全部正例+原困难/随机未观察项、查询顺序、温度0.05、lr0.001、10epochs均相同，唯一架构差异是逐篇均匀聚合或查询条件softmax（温度0.2）；不把增加参数/MLP的收益算给attention。候选向量至多20篇，query仍为前6篇均值；没有训练GraphFormers，也没有完成固定R预算/删除响应保持模型。
+- 先复核基础checkpoint/cache/train/val全部指纹并重算基础val，自动进行一次可丢弃的设备前反向检查；正式训练只加载train/val，完整20,389候选池的val Recall100选best，含epoch0。证据在验证时预投影一次，query batch8×candidate chunk512双分块评分，空槽屏蔽、排除自身/历史关系、按ID稳定处理并列。保存仅复制state_dict到CPU，活模型及optimizer引用不变。
+- 输出 `ckpt/partner_teacher/run1/{mean,attention}/best.pt/history.json/training_summary.json` 及根目录 `base.val.json`、`preflight.json`、`run_config.json`、`comparison.json`。报告attention归一化熵/最大权重。attention若未同时胜过base和同结构mean对照，先停止压缩；若胜过也先多seed复核，单次微小优势不表示显著提升。**本轮不访问test，不新增编码，不改数据。**
+- 服务器入口 `bash src/run_partner_teacher.sh` 自动nohup启动，拒绝复用已有run或日志；无需重装环境。新模型7项与集成8项CPU检查已通过，涵盖零残差基线等价、mask/置换/分块、参数公平、真实head更新、冻结base、拒绝错误指纹/缓存、删除test分割文件后仍可完整训练，以及overwrite参数转换下optimizer引用保持。**尚未在真实4090运行，也没有新的教师实验成绩或耗时承诺。** 按步命令见 `data_pipeline/PARTNER_4090_GUIDE.md` 第10节。
+- 将23项上传白名单文件单独复制到 `tmp/partner_teacher_isolated_20261027/` 后，59项CPU检查全部通过（21.441秒），不依赖其他未上传研究文件；Git Bash `-n` 启动脚本语法检查及CLI帮助通过。检查记录见 `research_audit/2026-10-27/teacher_cpu_validation.json`。
 
 ## 4090新服务器迁移准备（2026-10-26）
 
@@ -27,6 +36,8 @@
 - 新增 `partner_evidence_max_baseline.py evaluate`，复用原始冻结缓存和同一query前6篇均值，候选逐篇L2归一取最大余弦，空槽-inf、全池排除与稳定ID排序；不加载投影W、不加载BERT、不训练新参数。报告实际向量数/维度及含padding张量字节，不把这些值称为实测峰值或FAISS索引大小。其6项CPU检查通过（负分空槽、max与mean区别、全池排除/并列/标签无关性、真实缓存fixture、指纹与时间拒绝），尚未在真实GPU/完整验证集运行；下一步仅 `--split val --output logs/partner_v2/fullmax.val.json --batch-size 16`。
 - 新对照加入上传白名单后，将18个源文件的Git暂存内容独立复制到临时目录，完整运行环境相关44项CPU检查全部通过，确认不依赖未上传的构建脚本。逐篇max的真实GPU验证结果仍待用户运行回传。
 - 服务器接续反馈：首次安装在check_parts阶段发现001仅50MiB、002仅60MiB（均应512MiB），003大小21,886,898字节正确，尚未写入安装目标。断点续传HTTP206有效，但附件节点实测速率约9KB/s，ETA约10小时；这是当前下载链路的表现，不能据此断言平台或GitHub限速。用户已提供控制台SSH登录命令（端口23），Windows现有OpenSSH/scp可用，改建议本机完整 `tmp/partner_release` 通过SCP直传 `/workspace/partner_release`，再从该目录install。首次主机确认及SSH密码由用户在本机终端交互输入，未索取密码、未由我实际上传到服务器。
+- **新会话接续：逐篇max已在真实4090完整val跑完**。用户终端记录显示代码更新至03d8a22，236,949项候选历史证据（非去重专利数），耗时18.611秒；val为1,732查询、20,389候选、3,112正例。max/冻结均值epoch0：Recall20=2.93%/7.07%，Recall100=7.69%/16.35%，Hit100=11.14%/23.38%，P1=0.92%/1.73%，MRR100=0.01554/0.03486。max的R100低8.67个百分点，Top100命中查询193/405，五项指标均低于均值。该负结果只否定当前冻结向量的直接max规则，不能据此否定训练后的证据交互或多原型方法，也未做显著性检验。
+- 已保存 `research_audit/2026-10-26/server_reported_fullmax.val.json`、`server_reported_frozen.epoch0.val.json` 和 `evidence_aggregation_validation_comparison.json/.md`。max的8项输入SHA对本机全部一致，规模与dataset manifest一致，embedding manifest SHA与此前服务器冻结均值报告一致；均值来自用户读取training_history[0].validation的摘录，未附run_config/指纹，未独立取回服务器文件。现有434,047篇缓存继续复用，**不重跑encode或本次max，也不新增test评测**。下一步沿10月15日预定方案实现并验证轻量证据交互教师，与均值/max及训练投影对照，教师若无优势先停止压缩蒸馏；固定R预算与删除响应保持仍未实现/训练。
 
 ## 根据专利推荐企业：新版数据已完成（2026-10-24）
 

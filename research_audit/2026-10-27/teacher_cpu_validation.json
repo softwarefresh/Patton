@@ -1,0 +1,37 @@
+{
+  "date_local": "2026-10-27",
+  "status": "cpu_checks_passed_gpu_training_not_run",
+  "base_git_commit": "03d8a2237a238d8ce21d80ae977759e1b00806d5",
+  "isolated_source_file_count": 23,
+  "isolated_cpu_test_count": 59,
+  "isolated_cpu_test_elapsed_seconds": 21.441,
+  "new_model_tests": 7,
+  "new_integration_tests": 8,
+  "bash_syntax_check_passed": true,
+  "cli_help_passed": true,
+  "test_scope": "CPU fixture encodes via fake MiniEncoder; paired head optimization and exhaustive fixture ranking; no real GPU or full-data neural training",
+  "formal_test_evaluation_performed": false,
+  "real_gpu_teacher_training_performed": false,
+  "files": {
+    "data_pipeline/partner_evidence_teacher.py": {
+      "bytes": 21558,
+      "sha256": "4825ee626d02e2a1336aede7dac205b153ccfb96f494e6554494ed425986e9aa"
+    },
+    "data_pipeline/partner_evidence_teacher_model.py": {
+      "bytes": 7351,
+      "sha256": "a4eda77f4397b9f434a0166b4aed94ec8984f75071addba9b4fdd5003b126227"
+    },
+    "tests/test_partner_evidence_teacher.py": {
+      "bytes": 15328,
+      "sha256": "2a88ce80394a302547c239d7ac6b8f812155a0ff5cc6037a97794b8d0e5bf092"
+    },
+    "tests/test_partner_evidence_teacher_model.py": {
+      "bytes": 8511,
+      "sha256": "6aac876b3e37bd8d57a41ca41a63281274d322d415d336f449a0a743423fa62a"
+    },
+    "src/run_partner_teacher.sh": {
+      "bytes": 1538,
+      "sha256": "3d6d65c0ca12a136c8340f1010ca82c128af5485adbbf2b21b33ad6523b52b7d"
+    }
+  }
+}
