@@ -63,6 +63,8 @@ def run(args):
         raise ValueError("Refusing existing audit output")
     if args.sample_size < 0:
         raise ValueError("--sample-size must be 0 (all) or positive")
+    if args.batch_size <= 0:
+        raise ValueError("--batch-size must be positive")
     started = time.monotonic()
     rows = select_rows(cache, args.sample_size)
     if not rows:
@@ -70,10 +72,14 @@ def run(args):
     tokenizer = Tokenizer.from_file(str(tokenizer_path))
     tokenizer.no_truncation()
     tokenizer.no_padding()
-    encoded = tokenizer.encode_batch([row["text"] for row in rows], add_special_tokens=True)
-    lengths = [len(result.ids) for result in encoded]
-    char_lengths = [len(row["text"]) for row in rows]
-    recovered = [row.get("recovered_characters", 0) for row in rows]
+    lengths, char_lengths, recovered = [], [], []
+    for start in range(0, len(rows), args.batch_size):
+        batch = rows[start:start + args.batch_size]
+        encoded = tokenizer.encode_batch([row["text"] for row in batch], add_special_tokens=True)
+        lengths.extend(len(result.ids) for result in encoded)
+        char_lengths.extend(len(row["text"]) for row in batch)
+        recovered.extend(row.get("recovered_characters", 0) for row in batch)
+        del encoded
     n = len(lengths)
     coverage = {
         str(budget): {
@@ -134,6 +140,7 @@ def main():
     )
     parser.add_argument("--tokenizer-json", type=Path, required=True)
     parser.add_argument("--sample-size", type=int, default=0, help="0 = all patents")
+    parser.add_argument("--batch-size", type=int, default=2000)
     parser.add_argument("--output", type=Path, required=True)
     run(parser.parse_args())
 

@@ -32,6 +32,19 @@ python data_pipeline/build_partner_full_text.py
 - 每篇记录包含完整清洗文本、`stored_text_characters`、`recovered_characters`；
 - 全量预计几分钟量级（取决于磁盘；SQLite 主键查询）。
 
+本地全量实测（2026-10-27）：
+
+| 项目 | 数值 |
+|---|---:|
+| 专利数 | 434,047 |
+| 完整文本超过 1600 字符 | 10,720（2.47%） |
+| 找回的字符总数 | 5,702,247 |
+| 最大完整清洗长度 | 13,351 字符 |
+| 输出大小 | 239,318,921 字节（约 228 MiB gzip） |
+| 耗时 | 268.66 秒 |
+
+如果服务器上没有 `data_pipeline/g_domain.db`（7.4GB），就在本地跑第 1 步，把生成的 `evidence.full.jsonl.gz`（约 228MiB）上传到服务器，不要上传 7.4GB 原库。
+
 ## 第 2 步：用新模型 tokenizer 统计真实长度
 
 先下载 Qwen3-Embedding-0.6B 的 tokenizer（只需要 tokenizer 文件，不需要权重）：
@@ -49,6 +62,7 @@ hf download Qwen/Qwen3-Embedding-0.6B tokenizer.json tokenizer_config.json \
 python data_pipeline/audit_full_text_tokens.py \
   --tokenizer-json ckpt/Qwen3-Embedding-0.6B/tokenizer.json \
   --sample-size 0 \
+  --batch-size 2000 \
   --output logs/partner_v2/full_text_token_audit.json
 ```
 
