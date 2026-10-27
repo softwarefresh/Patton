@@ -791,11 +791,12 @@ def evaluate(args):
         ],
         "elapsed_seconds": round(time.monotonic() - started, 3),
     }
-    output.parent.mkdir(parents=True, exist_ok=True)
-    with output.open("x", encoding="utf-8") as stream:
-        stream.write(json.dumps(payload, ensure_ascii=False, indent=2, allow_nan=False) + "\n")
     summary_path = Path(args.summary_output).resolve() if args.summary_output else output.parent / (output.stem + ".summary.md")
     require(not summary_path.exists(), "Refusing existing summary report")
+    output.parent.mkdir(parents=True, exist_ok=True)
+    summary_path.parent.mkdir(parents=True, exist_ok=True)
+    with output.open("x", encoding="utf-8") as stream:
+        stream.write(json.dumps(payload, ensure_ascii=False, indent=2, allow_nan=False) + "\n")
     summary_path.write_text(summary_markdown(payload), encoding="utf-8")
     print(json.dumps({
         "status": "completed",
