@@ -42,6 +42,7 @@ DEFAULT_ALPHA_GRID = "0,0.05,0.1,0.15,0.2,0.3,0.5,0.7,1.0"
 SIZE_GROUPS = ("2-5", "6-10", "11-20")
 EXPECTED_MEAN_R100 = 0.16352341425902947
 EXPECTED_MAX_R100 = 0.0768640544991725
+DEFAULT_IDENTITY_NAMES = "data/patent/cooperation_v2/identity/identities.jsonl"
 
 
 def load_type_map(path):
@@ -65,6 +66,24 @@ def load_type_map(path):
     return result, str(path)
 
 
+def load_identity_names(path):
+    """Read company_code -> company_name from the canonical identity file."""
+    path = Path(path) if path else None
+    if path is None or not path.is_file():
+        return {}, "missing"
+    result = {}
+    with path.open(encoding="utf-8") as stream:
+        for line in stream:
+            if not line.strip():
+                continue
+            item = json.loads(line)
+            code = item.get("company_code")
+            name = item.get("company_name")
+            if code and name:
+                result[code] = name
+    return result, str(path)
+
+
 def company_type(code, name, type_map):
     """Use the registry type when available; otherwise a conservative name rule."""
     if code and code in type_map:
@@ -80,7 +99,7 @@ def company_type(code, name, type_map):
 class AdaptivePoolingData:
     """Frozen evidence, query vectors, targets, and candidate group labels."""
 
-    def __init__(self, data_dir, split, store, type_map, type_source):
+    def __init__(self, data_dir, split, store, type_map, identity_names, type_source):
         require(split in ("train", "val"), "Adaptive pooling probe uses train and val only")
         require((Path(data_dir) / "dataset_manifest.json").is_file(), "Canonical dataset_manifest.json is required")
         with EvidenceDataset(data_dir, split) as dataset:
@@ -106,9 +125,9 @@ class AdaptivePoolingData:
                     self.mask[position, slot] = True
                 self.n_patents[position] = len(references)
                 document = dataset.documents[doc_id]
-                self.company_types.append(company_type(
-                    document.get("company_code"), document.get("company_name"), type_map
-                ))
+                code = document.get("company_code")
+                name = identity_names.get(code, "") if code else ""
+                self.company_types.append(company_type(code, name, type_map))
             self.query_ids = sorted(dataset.queries)
             self.queries = torch.from_numpy(np.stack([
                 store.mean(dataset.histories[dataset.queries[qid]["source"]]["patents"][:6])
@@ -360,10 +379,18 @@ def evaluate(args):
     require(args.min_group_candidates > 0 and args.min_group_positives > 0,
             "Group thresholds must be positive")
     device = choose_device(args.device)
-    type_map, type_source = load_type_map(args.type_map)
-    print(json.dumps({"stage": "loading_train", "type_source": type_source}), flush=True)
+    type_map, type_map_source = load_type_map(args.type_map)
+    identity_names, identity_source = load_identity_names(args.identity_names)
+    if type_map:
+        type_source = type_map_source + ("+identity_fallback" if identity_names else "")
+    elif identity_names:
+        type_source = "identity_name_heuristic"
+    else:
+        type_source = "unknown"
+    print(json.dumps({"stage": "loading_train", "type_source": type_source,
+                      "identity_source": identity_source}), flush=True)
     store = EmbeddingStore(args.embedding_dir, args.data_dir)
-    train = AdaptivePoolingData(args.data_dir, "train", store, type_map, type_source)
+    train = AdaptivePoolingData(args.data_dir, "train", store, type_map, identity_names, type_source)
     train_allowed = build_allowed(train)
     print(json.dumps({"stage": "scoring_train"}), flush=True)
     train_mean, train_max = score_mean_max(train, device, args.batch_size)
@@ -413,7 +440,7 @@ def evaluate(args):
         torch.cuda.empty_cache()
 
     print(json.dumps({"stage": "loading_val"}), flush=True)
-    val = AdaptivePoolingData(args.data_dir, "val", store, type_map, type_source)
+    val = AdaptivePoolingData(args.data_dir, "val", store, type_map, identity_names, type_source)
     val_allowed = build_allowed(val)
     print(json.dumps({"stage": "scoring_val"}), flush=True)
     val_mean, val_max = score_mean_max(val, device, args.batch_size)
@@ -619,6 +646,14 @@ def self_test():
         path.write_text("信用代码,名称,专利数,类型\nX,某公司,1,企业\n", encoding="utf-8")
         type_map, source = load_type_map(path)
         check(type_map["X"] == "企业" and source.endswith("types.csv"), "type CSV")
+        identity_path = Path(directory) / "identities.jsonl"
+        identity_path.write_text(
+            json.dumps({"company_code": "X", "company_name": "某大学"}, ensure_ascii=False) + "\n",
+            encoding="utf-8",
+        )
+        identity_names, identity_source = load_identity_names(identity_path)
+        check(identity_names["X"] == "某大学" and identity_source.endswith("identities.jsonl"),
+              "identity names")
     alpha = alpha_vector({"a": 0.1, "b": 0.2}, ["a", "b", "c"], 0.0)
     check(np.allclose(alpha, [0.1, 0.2, 0.0]), "alpha fallback")
 
@@ -638,7 +673,7 @@ def self_test():
     check(ranked_max["q1"][0] == 12 and ranked_max["q2"][0] == 10, "alpha=1 equals max")
     mixed = rank_scores(mean, maximum, 0.5, data, allowed)
     check(mixed["q1"][0] == 11 and mixed["q2"][0] == 10, "alpha mix")
-    print(json.dumps({"status": "passed", "checks": 9}), flush=True)
+    print(json.dumps({"status": "passed", "checks": 10}), flush=True)
 
 
 def main():
@@ -655,6 +690,7 @@ def main():
     evaluate_parser.add_argument("--seed", type=int, default=42)
     evaluate_parser.add_argument("--random-seeds", type=int, default=3)
     evaluate_parser.add_argument("--type-map", type=Path, default=Path("data_pipeline/g_company_pool.csv"))
+    evaluate_parser.add_argument("--identity-names", type=Path, default=Path(DEFAULT_IDENTITY_NAMES))
     evaluate_parser.add_argument("--alpha-grid", default=DEFAULT_ALPHA_GRID)
     evaluate_parser.add_argument("--min-group-candidates", type=int, default=100)
     evaluate_parser.add_argument("--min-group-positives", type=int, default=20)
