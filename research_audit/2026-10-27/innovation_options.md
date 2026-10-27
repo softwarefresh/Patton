@@ -43,7 +43,7 @@
 - 首选：**Qwen3-Embedding-0.6B**（1024 维，32K 上下文，官方报告中文 CMTEB-R 71.02；Apache 2.0）。
 - 备选：**BGE-M3**（多语言，dense + sparse + multi-vector，支持长文本；FlagEmbedding 官方实现）。
 - 用法：冻结编码器；query 用焦点专利/前 6 篇均值；候选企业用 2–20 篇历史专利；先做 mean pooling，再试 top-k/attention。
-- 重要：需要从 `g_domain.db` 重新取专利原文，用新 tokenizer 编码；**不能复用旧的 256-token 缓存**。
+- 重要：当前 43.4 万篇专利中 **99.39% 都达到 256 token 上限**（中位数 256），模型只看到标题/摘要/早期权利要求；需要从 `g_domain.db` 重新取专利原文，用新 tokenizer 编码到 1024–2048+ token；**不能复用旧的 256-token 缓存**。
 
 **A2. 混合检索**
 
