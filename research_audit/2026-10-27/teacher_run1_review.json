@@ -1,0 +1,39 @@
+{
+  "date_local": "2026-10-27",
+  "status": "reported_negative_result_recorded_and_eight_input_hashes_checked",
+  "provenance": "User-supplied terminal print of ckpt/partner_teacher/run1/comparison.json; server files/checkpoints not independently retrieved",
+  "source_attachment_sha256": "582a2afd1907e6fc88fea7e0618c2677de70e77d098f2349faa8ab3e213bd2de",
+  "reported_input_fingerprints_verified_against_local_files": {
+    "tokenization_manifest.json": true,
+    "evidence.tokens.jsonl.gz": true,
+    "evidence.jsonl.gz": true,
+    "documents.val.jsonl": true,
+    "histories.val.jsonl": true,
+    "queries.val.jsonl": true,
+    "val.pairs.jsonl": true,
+    "dataset_manifest.json": true
+  },
+  "embedding_manifest_matches_previous_server_report": true,
+  "base_recall100_matches_previous_validation_selection": true,
+  "query_count": 1732,
+  "candidate_count": 20389,
+  "positive_count": 3112,
+  "selected_epoch": {
+    "mean": 0,
+    "attention": 0
+  },
+  "selected_validation_metrics": {
+    "recall@20": 0.06344061902347824,
+    "recall@100": 0.18382785882011374,
+    "Hit@100": 0.26501154734411086,
+    "P@1": 0.013279445727482679,
+    "MRR@100": 0.029681499497425247
+  },
+  "reported_elapsed_seconds": 467.238,
+  "interpretation": "Neither variant obtained validation Recall@100 strictly greater than the frozen projection in this run; both selected zero-residual epoch-zero fallback. This does not mean all epochs had identical metrics or that no training/parameter updates occurred.",
+  "server_history_preflight_and_run_config_received": false,
+  "training_failure_or_overfitting_established": false,
+  "decision": "Stop compression/distillation; inspect existing history/preflight/config before any new training",
+  "new_test_evaluation_or_retraining_performed": false,
+  "innovation_mechanism_effectiveness_established": false
+}

@@ -206,7 +206,9 @@ git pull --ff-only origin patent
 
 ## 10. 下一步：教师与同结构均值对照（2026-10-27）
 
-本节入口现已实现，尚待服务器实际运行。沿用现有venv、完整向量和dense run1/best.pt。它冻结原投影，训练一个小证据头；同一命令顺序跑均值聚合和注意力聚合两个版本，各10轮，seed42、候选与参数量相同，完整验证池Recall100选best，包含零残差epoch0。仅用train/val；这是冻结BERT缓存上的交互可行性验证，还不是训练过的GraphFormers或固定预算贡献保持模型。
+**首轮已完成，当前无需重跑**：用户已回传run1 comparison，耗时467.238秒；mean/attention均选epoch0，val Recall100=18.38%，未超过基础投影，先停止压缩蒸馏。后续只读检查见第11节。
+
+以下保留首次运行说明。沿用现有venv、完整向量和dense run1/best.pt。它冻结原投影，训练一个小证据头；同一命令顺序跑均值聚合和注意力聚合两个版本，各10轮，seed42、候选与参数量相同，完整验证池Recall100选best，包含零残差epoch0。仅用train/val；这是冻结BERT缓存上的交互可行性验证，还不是训练过的GraphFormers或固定预算贡献保持模型。
 
 在服务器终端依次执行：
 
@@ -240,4 +242,30 @@ cat /workspace/Patton/ckpt/partner_teacher/run1/comparison.json
 tail -n 80 /workspace/Patton/logs/partner_v2/teacher_run1.log
 ```
 
-入口会检查完整缓存、baseline checkpoint及train/val输入指纹，检查失败时保留现有输出和日志便于排查。当前只有CPU模型/集成检查通过，不能据此声称4090教师训练已通过。
+入口会检查完整缓存、baseline checkpoint及train/val输入指纹，检查失败时保留现有输出和日志便于排查。首轮现已回传completed，但history/preflight/run_config尚未独立取回，不能只凭所选epoch0的指标判断训练过程或失败原因。
+
+## 11. 教师首轮无R100收益：只读检查已有日志
+
+best_epoch=0表示训练轮次没有在完整val Recall100上严格超过起点，相同R100也保留早轮。comparison显示的同分是所选起点，不是每轮的实际指标。先不调参、不重训、不测test，也不推进压缩。
+
+在服务器项目根目录执行并回传输出：
+
+```bash
+cd /workspace/Patton
+.venv_partner4090/bin/python - <<'PY'
+import json
+from pathlib import Path
+p = Path('ckpt/partner_teacher/run1')
+print('preflight:', json.loads((p / 'preflight.json').read_text()))
+c = json.loads((p / 'run_config.json').read_text())
+print('config:', {k: c.get(k) for k in ('epochs', 'seed', 'lr', 'batch_size', 'temperature')})
+for mode in ('mean', 'attention'):
+    print('\n' + mode + ': epoch loss R20 R100 Hit100 P1 MRR entropy max_weight')
+    for r in json.loads((p / mode / 'history.json').read_text()):
+        v = r['validation']
+        values = [r['training_loss']] + [v.get(k) for k in ('recall@20', 'recall@100', 'Hit@100', 'P@1', 'MRR@100', 'mean_normalized_attention_entropy', 'mean_max_attention_weight')]
+        print(r['epoch'], *('-' if x is None else round(x, 6) for x in values))
+PY
+```
+
+这些输出用于区分训练loss/验证指标的变化，尚不能直接归因于过拟合、候选采样或attention无效。当前best.pt是epoch0回退文件，不可拿它判断末轮权重是否更新；程序未保存末轮参数快照。

@@ -2,7 +2,7 @@
 
 > 本文件记录实验流水线的当前状态，跨会话维护。新开会话先读这里。
 > **完整实验全景（任务/数据/设计/结果/资产/教训）见 [EXPERIMENTS.md](EXPERIMENTS.md)——新接手者先读那个。**
-> 最近更新：2026-10-27（轻量证据交互教师及同结构均值对照已实现，CPU检查通过，待4090配对验证；逐篇max验证Recall100为7.69%，低于冻结均值16.35%。固定预算压缩与贡献保持创新机制仍未实现/训练）
+> 最近更新：2026-10-27（服务器教师配对run1已完成，mean/attention均选epoch0，验证Recall100=18.38%，未超过原投影；暂停压缩蒸馏，下一步只核对已有history/preflight，不重训、不测test。固定预算贡献保持机制仍未实现/训练）
 
 ## 轻量证据交互教师：配对可行性实验（2026-10-27）
 
@@ -12,6 +12,8 @@
 - 输出 `ckpt/partner_teacher/run1/{mean,attention}/best.pt/history.json/training_summary.json` 及根目录 `base.val.json`、`preflight.json`、`run_config.json`、`comparison.json`。报告attention归一化熵/最大权重。attention若未同时胜过base和同结构mean对照，先停止压缩；若胜过也先多seed复核，单次微小优势不表示显著提升。**本轮不访问test，不新增编码，不改数据。**
 - 服务器入口 `bash src/run_partner_teacher.sh` 自动nohup启动，拒绝复用已有run或日志；无需重装环境。新模型7项与集成8项CPU检查已通过，涵盖零残差基线等价、mask/置换/分块、参数公平、真实head更新、冻结base、拒绝错误指纹/缓存、删除test分割文件后仍可完整训练，以及overwrite参数转换下optimizer引用保持。**尚未在真实4090运行，也没有新的教师实验成绩或耗时承诺。** 按步命令见 `data_pipeline/PARTNER_4090_GUIDE.md` 第10节。
 - 将23项上传白名单文件单独复制到 `tmp/partner_teacher_isolated_20261027/` 后，59项CPU检查全部通过（21.441秒），不依赖其他未上传研究文件；Git Bash `-n` 启动脚本语法检查及CLI帮助通过。检查记录见 `research_audit/2026-10-27/teacher_cpu_validation.json`。
+- **服务器run1结果已回传**：comparison status=completed，467.238秒（约7分47秒），mean和attention的best_epoch均为0、trained_residual_selected=false；所选模型均回退原投影，val R20=6.34%、R100=18.38%、Hit100=26.50%、P1=1.33%、MRR100=0.02968，均为1,732查询/20,389候选/3,112正例。两项attention优势标记均false，decision=stop_compression_and_review_teacher，test_accessed=false。严格按R100大于当前best选模，相同分数保留epoch0；**不能据此说每轮指标都相同、训练未发生或参数没有更新**。
+- 已保存 `research_audit/2026-10-27/server_reported_teacher.run1.comparison.json` 和 `teacher_run1_review.json`；回传8项输入SHA与本机规范数据全部一致，embedding SHA及原投影val R100与此前记录一致。来源仍为用户终端JSON，尚未取回服务器history/preflight/run_config或checkpoint，不能确定退化原因。下一步只读取这四份现有日志材料，检查loss及逐轮全池指标，再决定如何处理；**本轮不新训练、不重编码、不测test、不启动压缩蒸馏**。best.pt保留的是epoch0，不能用它检查末轮残差权重是否更新。
 
 ## 4090新服务器迁移准备（2026-10-26）
 
