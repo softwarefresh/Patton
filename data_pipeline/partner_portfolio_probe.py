@@ -648,7 +648,9 @@ def summary_markdown(payload):
         "|---|---|---:|---:|---:|---:|---:|---:|",
     ]
     for representation, entry in payload["representations"].items():
-        for variant, result in entry["variants"].items():
+        keep = ["max", "top2", entry["best_softmax_variant"]]
+        for variant in keep:
+            result = entry["variants"][variant]
             positive = result["positive_strata"]["thresholds"]["0.2500"]
             lines.append(
                 "| {} | {} | {:.4f} | {:.4f} | {:.4f} | {} | {} | {:.2f} |".format(
@@ -657,11 +659,24 @@ def summary_markdown(payload):
                     result["metrics"]["recall@20"],
                     result["metrics"]["recall@100"],
                     result["metrics"]["Hit@100"],
-                    "n/a" if positive["minority_positive_recall@100"] is None else "{:.4f}".format(positive["minority_positive_recall@100"]),
-                    "n/a" if positive["majority_positive_recall@100"] is None else "{:.4f}".format(positive["majority_positive_recall@100"]),
+                    fmt(positive["minority_positive_recall@100"]),
+                    fmt(positive["majority_positive_recall@100"]),
                     result["top100"]["mean_candidate_patents_top100"],
                 )
             )
+    lines.extend(["", "主表只列 `max`、`top2` 和各表示按 val R@100 选出的最佳 softmax；完整温度网格在 JSON。"])
+    base_positive = payload["representations"]["mean"]["variants"]["max"]["positive_strata"]["thresholds"]["0.2500"]
+    lines.extend([
+        "",
+        "- 正例分层（25%）：少数方向 {}，多数方向 {}，未知 IPC {}；含少数方向正例的查询 {}。".format(
+            base_positive["minority_positive_count"],
+            base_positive["majority_positive_count"],
+            base_positive["unknown_positive_count"],
+            base_positive["queries_with_minority_positive"],
+        ),
+    ])
+    for representation, entry in payload["representations"].items():
+        lines.append("- {} 分组数分布：{}".format(representation, entry["group_count_histogram"]))
     lines.extend(["", "## 关键对照（R@100 配对 bootstrap）", "", "| 对照 | 差值 | 95% CI | bootstrap 正比例 |", "|---|---:|---|---:|"])
     best_rare = payload["representations"].get("ipc_rare", {}).get("best_softmax_variant")
     for key, comparison in payload["comparisons"].items():
