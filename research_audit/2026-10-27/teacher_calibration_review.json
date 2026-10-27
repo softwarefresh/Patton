@@ -1,0 +1,45 @@
+{
+  "date_local": "2026-10-27",
+  "status": "validation_calibration_completed_current_teacher_implementation_closed",
+  "provenance": "Transcribed from user terminal JSON; no independent download of server vectors/checkpoints",
+  "source_attachment_sha256": "a05f662952fbbec1e14dd60a2f7b79945f4eb9eaa4ff04b4dce22fc36aed30c1",
+  "input_hashes_verified_against_local_files": {
+    "tokenization_manifest.json": true,
+    "evidence.tokens.jsonl.gz": true,
+    "evidence.jsonl.gz": true,
+    "documents.val.jsonl": true,
+    "histories.val.jsonl": true,
+    "queries.val.jsonl": true,
+    "val.pairs.jsonl": true,
+    "dataset_manifest.json": true
+  },
+  "all_four_endpoint_controls_passed_and_metrics_cross_checked": true,
+  "local_previous_comparison_transcript_bytes_and_sha_match_reported_server_comparison": true,
+  "selected_alphas": {
+    "trained_uniform_mean_residual": 0.03,
+    "attention_residual": 0.01
+  },
+  "base_validation_recall100": 0.18382785882011374,
+  "trained_uniform_mean_residual_validation_recall100": 0.18753585608236942,
+  "attention_residual_validation_recall100": 0.1841746311966135,
+  "delta_from_base": {
+    "mean_residual": {
+      "recall100_percentage_points": 0.370799726225568,
+      "p1_percentage_points": -0.17321016166281755,
+      "mrr100": -0.00039500785400248956
+    },
+    "attention_residual": {
+      "recall100_percentage_points": 0.0346772376499771,
+      "p1_percentage_points": 0.0,
+      "mrr100": 8.928990012986235e-05
+    }
+  },
+  "mean_label_is_raw_frozen_mean_baseline": false,
+  "validation_exploratory_selection_only": true,
+  "independent_or_significant_teacher_advantage_established": false,
+  "attention_beats_matched_mean_control": false,
+  "interpretation": "Smaller residual weights improve this validation performance relative to uncalibrated last heads, but attention does not outperform its matched uniform-evidence residual control. Mean residual best-Recall100 setting reduces P1 and MRR versus base. Scale sensitivity is supported; a unique failure cause is not established.",
+  "decision": "Close this frozen-BERT-mean-query residual teacher implementation; no more grid expansion, training or compression/distillation. Keep the original projection as default. Other GraphFormers/multi-evidence architectures are not ruled out.",
+  "reported_elapsed_seconds": 86.961,
+  "test_accessed": false
+}

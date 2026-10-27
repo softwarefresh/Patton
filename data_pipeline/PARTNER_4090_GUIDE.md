@@ -355,3 +355,11 @@ cat /workspace/Patton/logs/partner_v2/teacher_dense1.calibration_basepath.val.js
 ```
 
 本次仅校准脚本路径修正，没有新训练、编码或test评测。CPU检查不能代替服务器真实GPU端点复现。
+
+## 15. 校准完成：当前教师实现收口，无需继续运行上述实验
+
+basepath结果已回传completed，耗时86.961秒，四个端点均通过。原投影val Recall100=18.38%；训练的均值残差头在alpha0.03达到18.75%，attention在alpha0.01仅18.42%，未胜同结构均值对照。均值最佳R100档的P1和MRR反而下降；这不是全面提升，也没有多seed或显著性证据。
+
+当前关闭这版冻结BERT均值查询残差教师实现，不再扩grid或追加训练，压缩蒸馏不启动。原投影保留为默认，现有数据/向量/模型及所有实验报告保留。这里关闭的是这版实现，不是否定全部GraphFormers或多原型模型。第10—14节命令留作历史复现，当前无需再跑。
+
+最终结果和边界见 [教师实验收口报告](../research_audit/2026-10-27/teacher_calibration_summary.md)。本轮没有新test评测、没有训练或改写权重。
