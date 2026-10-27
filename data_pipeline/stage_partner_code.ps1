@@ -9,12 +9,14 @@ $sourceFiles = @(
     'data_pipeline/partner_evidence_dataset.py', 'data_pipeline/partner_dense_baseline.py',
     'data_pipeline/partner_evidence_max_baseline.py',
     'data_pipeline/partner_evidence_teacher.py', 'data_pipeline/partner_evidence_teacher_model.py',
+    'data_pipeline/partner_teacher_candidates.py',
     'data_pipeline/patent_partner_baseline.py', 'data_pipeline/package_partner_data.py',
     'data_pipeline/cooperation_baseline.py',
     'data_pipeline/stage_partner_code.ps1',
     'tests/test_partner_evidence_dataset.py', 'tests/test_partner_dense_baseline.py',
     'tests/test_partner_evidence_max_baseline.py',
     'tests/test_partner_evidence_teacher.py', 'tests/test_partner_evidence_teacher_model.py',
+    'tests/test_partner_teacher_candidates.py',
     'tests/test_patent_partner_baseline.py', 'tests/test_partner_transfer.py'
 )
 foreach ($relative in $sourceFiles) {

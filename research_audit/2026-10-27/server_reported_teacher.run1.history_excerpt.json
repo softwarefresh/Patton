@@ -1,0 +1,219 @@
+{
+  "date_local": "2026-10-27",
+  "provenance": "Transcribed from user chat output of diagnostic script; history values printed with round(x,6), not complete original server JSON files",
+  "printed_decimal_places": 6,
+  "preflight": {
+    "status": "passed",
+    "smoke_only": true,
+    "head_parameters_updated": true,
+    "base_projection_frozen": true,
+    "epoch_zero_reproduces_base": true,
+    "validation_query_sample": 8,
+    "validation_candidate_sample": 512,
+    "sample_scoring_seconds": 0.008,
+    "sample_metrics_used_for_selection": false,
+    "test_accessed": false
+  },
+  "run_config_excerpt": {
+    "epochs": 10,
+    "seed": 42,
+    "lr": 0.001,
+    "batch_size": 32
+  },
+  "history_excerpt": {
+    "mean": [
+      {
+        "epoch": 0,
+        "training_loss": null,
+        "recall@20": 0.063441,
+        "recall@100": 0.183828,
+        "MRR@100": 0.029681,
+        "mean_normalized_attention_entropy": null
+      },
+      {
+        "epoch": 1,
+        "training_loss": 2.792438,
+        "recall@20": 0.035374,
+        "recall@100": 0.111684,
+        "MRR@100": 0.014733,
+        "mean_normalized_attention_entropy": 1.0
+      },
+      {
+        "epoch": 2,
+        "training_loss": 2.605641,
+        "recall@20": 0.016622,
+        "recall@100": 0.062159,
+        "MRR@100": 0.006999,
+        "mean_normalized_attention_entropy": 1.0
+      },
+      {
+        "epoch": 3,
+        "training_loss": 2.349407,
+        "recall@20": 0.012916,
+        "recall@100": 0.048821,
+        "MRR@100": 0.007219,
+        "mean_normalized_attention_entropy": 1.0
+      },
+      {
+        "epoch": 4,
+        "training_loss": 2.009928,
+        "recall@20": 0.009442,
+        "recall@100": 0.034806,
+        "MRR@100": 0.005573,
+        "mean_normalized_attention_entropy": 1.0
+      },
+      {
+        "epoch": 5,
+        "training_loss": 1.669165,
+        "recall@20": 0.007356,
+        "recall@100": 0.034629,
+        "MRR@100": 0.004134,
+        "mean_normalized_attention_entropy": 1.0
+      },
+      {
+        "epoch": 6,
+        "training_loss": 1.394594,
+        "recall@20": 0.002838,
+        "recall@100": 0.023282,
+        "MRR@100": 0.002813,
+        "mean_normalized_attention_entropy": 1.0
+      },
+      {
+        "epoch": 7,
+        "training_loss": 1.169345,
+        "recall@20": 0.010661,
+        "recall@100": 0.040897,
+        "MRR@100": 0.006438,
+        "mean_normalized_attention_entropy": 1.0
+      },
+      {
+        "epoch": 8,
+        "training_loss": 0.983118,
+        "recall@20": 0.010023,
+        "recall@100": 0.035066,
+        "MRR@100": 0.004424,
+        "mean_normalized_attention_entropy": 1.0
+      },
+      {
+        "epoch": 9,
+        "training_loss": 0.859479,
+        "recall@20": 0.00383,
+        "recall@100": 0.018531,
+        "MRR@100": 0.002191,
+        "mean_normalized_attention_entropy": 1.0
+      },
+      {
+        "epoch": 10,
+        "training_loss": 0.790011,
+        "recall@20": 0.007283,
+        "recall@100": 0.024473,
+        "MRR@100": 0.003897,
+        "mean_normalized_attention_entropy": 1.0
+      }
+    ],
+    "attention": [
+      {
+        "epoch": 0,
+        "training_loss": null,
+        "recall@20": 0.063441,
+        "recall@100": 0.183828,
+        "MRR@100": 0.029681,
+        "mean_normalized_attention_entropy": null
+      },
+      {
+        "epoch": 1,
+        "training_loss": 2.810893,
+        "recall@20": 0.034275,
+        "recall@100": 0.14177,
+        "MRR@100": 0.020426,
+        "mean_normalized_attention_entropy": 0.951877
+      },
+      {
+        "epoch": 2,
+        "training_loss": 2.564841,
+        "recall@20": 0.005852,
+        "recall@100": 0.050918,
+        "MRR@100": 0.004035,
+        "mean_normalized_attention_entropy": 0.943052
+      },
+      {
+        "epoch": 3,
+        "training_loss": 2.243193,
+        "recall@20": 0.00737,
+        "recall@100": 0.043065,
+        "MRR@100": 0.004641,
+        "mean_normalized_attention_entropy": 0.928061
+      },
+      {
+        "epoch": 4,
+        "training_loss": 1.885477,
+        "recall@20": 0.007388,
+        "recall@100": 0.034375,
+        "MRR@100": 0.004758,
+        "mean_normalized_attention_entropy": 0.964956
+      },
+      {
+        "epoch": 5,
+        "training_loss": 1.589169,
+        "recall@20": 0.006406,
+        "recall@100": 0.025456,
+        "MRR@100": 0.003577,
+        "mean_normalized_attention_entropy": 0.949149
+      },
+      {
+        "epoch": 6,
+        "training_loss": 1.313397,
+        "recall@20": 0.005064,
+        "recall@100": 0.021602,
+        "MRR@100": 0.003097,
+        "mean_normalized_attention_entropy": 0.956096
+      },
+      {
+        "epoch": 7,
+        "training_loss": 1.087536,
+        "recall@20": 0.004705,
+        "recall@100": 0.028546,
+        "MRR@100": 0.002605,
+        "mean_normalized_attention_entropy": 0.944082
+      },
+      {
+        "epoch": 8,
+        "training_loss": 0.912182,
+        "recall@20": 0.005269,
+        "recall@100": 0.028037,
+        "MRR@100": 0.00189,
+        "mean_normalized_attention_entropy": 0.954292
+      },
+      {
+        "epoch": 9,
+        "training_loss": 0.810517,
+        "recall@20": 0.006944,
+        "recall@100": 0.018179,
+        "MRR@100": 0.002812,
+        "mean_normalized_attention_entropy": 0.953682
+      },
+      {
+        "epoch": 10,
+        "training_loss": 0.731828,
+        "recall@20": 0.010381,
+        "recall@100": 0.032355,
+        "MRR@100": 0.003275,
+        "mean_normalized_attention_entropy": 0.9466
+      }
+    ]
+  },
+  "observations": [
+    "Training loss decreases for both modes while full-validation retrieval deteriorates from epoch 1.",
+    "Average normalized attention entropy remains approximately 0.93-0.96 on scored validation pairs."
+  ],
+  "causal_diagnosis_established": false,
+  "canonical_training_candidate_counts_locally_checked": {
+    "queries": 1341,
+    "hard_per_query": 16,
+    "random_per_query": 16,
+    "hard_random_disjoint": true
+  },
+  "next_experiment": "Only replace the 16 canonical BM25-hard unobserved items with frozen-base train-pool dense-hard items; preserve all positives, original random16, architecture/lr/epochs/seed/temperature; paired mean/attention evaluation on full validation pool.",
+  "test_evaluation_performed": false,
+  "compression_distillation_started": false
+}

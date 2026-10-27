@@ -267,6 +267,127 @@ class EvidenceTeacherPipelineTests(unittest.TestCase):
                         teacher.train_pair(args)
                 self.assertFalse(args.output_dir.exists())
 
+    def test_dense_hard_pair_preserves_sources_and_shares_derived_candidates_between_controls(self):
+        # Give mining real alternatives while reusing already encoded patents.
+        # The original four-company fixture has one unobserved item per query,
+        # listed as both hard and random, so cannot test independent quotas.
+        original_pairs = list(dense.rows(self.directory / "train.pairs.jsonl"))
+        documents = list(dense.rows(self.directory / "documents.train.jsonl"))
+        histories = list(dense.rows(self.directory / "histories.train.jsonl"))
+        for new_id, copied_id in ((4, 3), (5, 0)):
+            document = copy.deepcopy(next(row for row in documents if row["doc_id"] == copied_id))
+            history = copy.deepcopy(next(row for row in histories if row["doc_id"] == copied_id))
+            for row in (document, history):
+                row["doc_id"] = new_id
+                row["company_code"] = "C" + str(new_id)
+            document["excluded_doc_ids"] = [new_id]
+            documents.append(document)
+            histories.append(history)
+        for row in original_pairs:
+            random_id = 3 if row["source_doc_id"] == 0 else 0
+            row["positive_doc_ids"] = [1, 2]
+            row["hard_negative_doc_ids"] = [4]
+            row["random_negative_doc_ids"] = [random_id]
+            row["negative_doc_ids"] = [4, random_id]
+        fixture_module.fixture_module.write_rows(self.directory / "documents.train.jsonl", documents)
+        fixture_module.fixture_module.write_rows(self.directory / "histories.train.jsonl", histories)
+        fixture_module.fixture_module.write_rows(self.directory / "train.pairs.jsonl", original_pairs)
+        self.fixture.refresh_manifest()
+        # Rebuild the legitimate baseline so its source binding includes this
+        # expanded training pool; validation and token/vector sources are intact.
+        baseline_args = SimpleNamespace(
+            data_dir=self.directory, embedding_dir=self.embedding_dir,
+            output_dir=self.directory / "dense_expanded_pool", epochs=1, batch_size=2,
+            lr=0.001, temperature=0.05, seed=7, weight_decay=0.01, device="cpu", eval_batch_size=2)
+        with contextlib.redirect_stdout(io.StringIO()):
+            dense.train(baseline_args)
+        self.base_checkpoint = baseline_args.output_dir / "best.pt"
+        args = self.args("dense_hard_pair")
+        args.candidate_mode = "dense-hard"
+        canonical_files = [path for path in self.directory.iterdir() if path.is_file()]
+        protected = canonical_files + [self.base_checkpoint, self.embedding_dir / "embedding_manifest.json",
+                                       self.embedding_dir / "index.jsonl", self.embedding_dir / "vectors.npy"]
+        before = {str(path): dense.fingerprint(path) for path in protected}
+        prohibited = {stem + ".test.jsonl" for stem in ("documents", "histories", "queries")}
+        prohibited.add("test.pairs.jsonl")
+        original_open = Path.open
+
+        def guarded_open(path, *arguments, **keywords):
+            if path.name in prohibited:
+                raise AssertionError("Teacher must not open the test cohort: " + path.name)
+            return original_open(path, *arguments, **keywords)
+
+        observed_training_pairs = []
+        original_train_variant = teacher.train_variant
+
+        def record_training_pairs(*arguments, **keywords):
+            observed_training_pairs.append(copy.deepcopy(arguments[2].pairs))
+            return original_train_variant(*arguments, **keywords)
+
+        with patch.object(Path, "open", guarded_open), \
+                patch.object(teacher, "train_variant", side_effect=record_training_pairs), \
+                contextlib.redirect_stdout(io.StringIO()):
+            teacher.train_pair(args)
+        self.assertEqual(before, {name: dense.fingerprint(Path(name)) for name in before})
+        derived_path = args.output_dir / "training_candidates.jsonl"
+        derived_fingerprint = dense.fingerprint(derived_path)
+        records = list(dense.rows(derived_path))
+        audit = dense.read_json(args.output_dir / "candidate_audit.json")
+        self.assertEqual(audit["split"], "train")
+        self.assertEqual(audit["query_count"], 2)
+        self.assertEqual(audit["candidate_count"], 6)
+        self.assertEqual(audit["canonical_pairs_sha256"], before[str(self.directory / "train.pairs.jsonl")]["sha256"])
+        self.assertFalse(audit["val_accessed"])
+        self.assertFalse(audit["test_accessed"])
+        self.assertEqual({row["query_id"] for row in records}, {row["query_id"] for row in original_pairs})
+        canonical = {row["query_id"]: row for row in original_pairs}
+        queries = {row["query_id"]: row for row in dense.rows(self.directory / "queries.train.jsonl")}
+        expected_pairs = {row["query_id"]: row["candidate_ids"] for row in records}
+        self.assertEqual(observed_training_pairs, [expected_pairs, expected_pairs])
+        self.assertTrue(any(set(row["dense_hard_doc_ids"]) !=
+                            set(canonical[row["query_id"]]["hard_negative_doc_ids"]) for row in records))
+        for row in records:
+            source = canonical[row["query_id"]]
+            positives = set(source["positive_doc_ids"])
+            retained_random = set(source["random_negative_doc_ids"])
+            hard = set(row["dense_hard_doc_ids"])
+            self.assertEqual(set(row["positive_doc_ids"]), positives)
+            self.assertEqual(set(row["retained_random_doc_ids"]), retained_random)
+            self.assertEqual(len(hard), len(set(source["hard_negative_doc_ids"])))
+            self.assertFalse(hard & (positives | retained_random | set(queries[row["query_id"]]["excluded_doc_ids"])))
+            self.assertEqual(set(row["candidate_ids"]), positives | retained_random | hard)
+            self.assertEqual(len(row["candidate_ids"]), len(set(row["candidate_ids"])))
+            self.assertEqual(len(row["candidate_ids"]), len(row["canonical_candidate_ids"]))
+        root_config = dense.read_json(args.output_dir / "run_config.json")
+        self.assertEqual(root_config["candidate_mode"], "dense-hard")
+        self.assertEqual(root_config["derived_candidate_fingerprint"], derived_fingerprint)
+        for mode in ("mean", "attention"):
+            config = dense.read_json(args.output_dir / mode / "run_config.json")
+            self.assertEqual(config["candidate_mode"], "dense-hard")
+            self.assertEqual(config["derived_candidate_fingerprint"], derived_fingerprint)
+            for field in ("seed", "epochs", "lr", "hidden_dim", "mlp_hidden", "residual_scale",
+                          "source_fingerprints", "base_checkpoint"):
+                self.assertEqual(config[field], root_config[field])
+            history = dense.read_json(args.output_dir / mode / "history.json")
+            best = torch.load(args.output_dir / mode / "best.pt", weights_only=True)
+            last = torch.load(args.output_dir / mode / "last.pt", weights_only=True)
+            self.assertEqual(best["selection_split"], "val")
+            self.assertEqual(best["checkpoint_role"], "validation_best")
+            self.assertIsNone(last["selection_split"])
+            self.assertIsNone(last["selected_epoch"])
+            self.assertEqual(last["checkpoint_role"], "diagnostic_last")
+            self.assertEqual(last["epoch"], args.epochs)
+            self.assertEqual(last["validation"], history[-1]["validation"])
+            self.assertEqual(best["validation"]["recall@100"],
+                             max(item["validation"]["recall@100"] for item in history))
+            self.assertEqual(best["configuration"]["derived_candidate_fingerprint"], derived_fingerprint)
+            self.assertEqual(last["configuration"]["derived_candidate_fingerprint"], derived_fingerprint)
+            summary = dense.read_json(args.output_dir / mode / "training_summary.json")
+            self.assertGreater(summary["head_parameter_delta_l2"], 0.)
+            self.assertEqual(summary["last_checkpoint_role"], "diagnostic_only_not_validation_selection")
+            self.assertEqual(summary["final_epoch"], args.epochs)
+            self.assertEqual(summary["final_validation"], history[-1]["validation"])
+
 
 if __name__ == "__main__":
     unittest.main()

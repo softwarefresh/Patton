@@ -5,8 +5,13 @@ set -o noclobber
 PROJ_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$PROJ_DIR"
 RUN_NAME="${1:-run1}"
+CANDIDATE_MODE="${2:-canonical}"
 if [[ ! "$RUN_NAME" =~ ^[A-Za-z0-9_-]+$ ]]; then
     printf 'Use a run name containing letters, digits, underscores or dashes.\n' >&2
+    exit 1
+fi
+if [[ "$CANDIDATE_MODE" != 'canonical' && "$CANDIDATE_MODE" != 'dense-hard' ]]; then
+    printf 'Candidate mode must be canonical or dense-hard.\n' >&2
     exit 1
 fi
 PYTHON_BIN="$PROJ_DIR/.venv_partner4090/bin/python"
@@ -27,6 +32,7 @@ nohup "$PYTHON_BIN" -u data_pipeline/partner_evidence_teacher.py train-pair \
     --embedding-dir artifacts/partner_vectors \
     --base-checkpoint "$BASE_CHECKPOINT" \
     --output-dir "$OUTPUT_DIR" \
+    --candidate-mode "$CANDIDATE_MODE" \
     --epochs 10 --batch-size 32 --seed 42 \
     --eval-batch-size 8 --candidate-batch-size 512 --device cuda \
     > "$LOG_FILE" 2>&1 < /dev/null &

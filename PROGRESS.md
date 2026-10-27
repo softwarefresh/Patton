@@ -2,7 +2,7 @@
 
 > 本文件记录实验流水线的当前状态，跨会话维护。新开会话先读这里。
 > **完整实验全景（任务/数据/设计/结果/资产/教训）见 [EXPERIMENTS.md](EXPERIMENTS.md)——新接手者先读那个。**
-> 最近更新：2026-10-27（服务器教师配对run1已完成，mean/attention均选epoch0，验证Recall100=18.38%，未超过原投影；暂停压缩蒸馏，下一步只核对已有history/preflight，不重训、不测test。固定预算贡献保持机制仍未实现/训练）
+> 最近更新：2026-10-27（run1逐轮日志已回传：两头loss下降而val召回从首轮退化；下一步固定其余配置，仅将16词法困难项换为train池稠密困难项，保留16随机项做配对干预。暂停压缩蒸馏，不测test；固定预算贡献保持机制仍未实现/训练）
 
 ## 轻量证据交互教师：配对可行性实验（2026-10-27）
 
@@ -14,6 +14,10 @@
 - 将23项上传白名单文件单独复制到 `tmp/partner_teacher_isolated_20261027/` 后，59项CPU检查全部通过（21.441秒），不依赖其他未上传研究文件；Git Bash `-n` 启动脚本语法检查及CLI帮助通过。检查记录见 `research_audit/2026-10-27/teacher_cpu_validation.json`。
 - **服务器run1结果已回传**：comparison status=completed，467.238秒（约7分47秒），mean和attention的best_epoch均为0、trained_residual_selected=false；所选模型均回退原投影，val R20=6.34%、R100=18.38%、Hit100=26.50%、P1=1.33%、MRR100=0.02968，均为1,732查询/20,389候选/3,112正例。两项attention优势标记均false，decision=stop_compression_and_review_teacher，test_accessed=false。严格按R100大于当前best选模，相同分数保留epoch0；**不能据此说每轮指标都相同、训练未发生或参数没有更新**。
 - 已保存 `research_audit/2026-10-27/server_reported_teacher.run1.comparison.json` 和 `teacher_run1_review.json`；回传8项输入SHA与本机规范数据全部一致，embedding SHA及原投影val R100与此前记录一致。来源仍为用户终端JSON，尚未取回服务器history/preflight/run_config或checkpoint，不能确定退化原因。下一步只读取这四份现有日志材料，检查loss及逐轮全池指标，再决定如何处理；**本轮不新训练、不重编码、不测test、不启动压缩蒸馏**。best.pt保留的是epoch0，不能用它检查末轮残差权重是否更新。
+- **逐轮诊断已回传**：preflight passed、head_parameters_updated=true、base_projection_frozen=true、epoch_zero_reproduces_base=true；config确认10epochs、seed42、lr0.001、batch32。mean/attention训练loss从第1轮2.792438/2.810893降至第10轮0.790011/0.731828；对应val R100首轮11.17%/14.18%，末轮2.45%/3.24%，均低于epoch0的18.38%。attention全池平均归一化熵约0.93—0.96，权重总体分散，不能据此说已选出关键证据。可确认训练目标改善而全池泛化退化；尚不能确定过拟合、候选错配或残差尺度各自的作用。摘录仅6位小数，保存在 `server_reported_teacher.run1.history_excerpt.json`，不是服务器原始history完整文件。
+- 本机独立确认正式train共1,341查询，每项恰16个BM25困难项+16个随机项且不重叠；没有当前投影检索的稠密困难项。决定做**候选策略单项干预**：`--candidate-mode dense-hard` 仅将16 BM25项等量换成冻结原投影从train全池挖出的高分未观察项，排除自身/历史关系/全部已知正例/保留随机项，原16随机项与全部正例不变；同一候选表用于mean/attention，其余架构、lr、seed、10epochs、温度不变。目标是检验该候选替换是否有帮助，不能把可能的收益单独归因于“难度”或直接断言根因已确定。
+- 新候选在独立run目录保存JSONL、SHA和train覆盖/分数/正例边界分差审计，canonical源数据不改，不用val/test挖候选。新增last.pt仅作诊断（checkpoint_role=diagnostic_last、无selection_split/selected_epoch）；best.pt仍完整val择优，summary记录head参数变化范数。服务器命令见手册第12节，独立输出 `ckpt/partner_teacher/dense1/`；压缩蒸馏继续暂停，新干预尚无真实服务器结果。
+- 候选模块7项专属检查、教师9项集成检查通过；将25项白名单文件独立复制后，完整67项CPU检查全部通过（13.604秒），Bash启动脚本语法与CLI帮助通过。覆盖实际替换而非只写审计、同一派生表进入两头训练、正例/随机/预算保持、数据与缓存不改、未读取test、best/last角色分离。记录 `teacher_dense_candidates_cpu_validation.json`。这些检查不表示新候选干预已经取得真实GPU收益。
 
 ## 4090新服务器迁移准备（2026-10-26）
 

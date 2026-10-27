@@ -269,3 +269,33 @@ PY
 ```
 
 这些输出用于区分训练loss/验证指标的变化，尚不能直接归因于过拟合、候选采样或attention无效。当前best.pt是epoch0回退文件，不可拿它判断末轮权重是否更新；程序未保存末轮参数快照。
+
+## 12. 日志已回传：只替换训练困难候选的对照
+
+run1的两组loss均下降，但val R100从首轮开始低于18.38%起点，末轮仅2.45%/3.24%。这说明当前采样训练目标改善，没有带来全池泛化收益；不代表GPU没训练，也不能据此认定具体根因。下一次固定其余配置，只检验候选策略替换。
+
+原训练每查询保留全部正例、16个BM25困难项和16个随机未观察项。新模式用冻结原投影在**train独立候选池**找16个高分未观察项，等量替换BM25项；原随机16项与全部正例保留。新项排除自身、历史伙伴、已知正例和随机项，数量不变且去重。它们仍是未观察项，不是已核实负例。两头使用同一新候选表，架构、lr0.001、seed42、温度、10轮和完整val选模规则均不变。
+
+服务器执行：
+
+```bash
+cd /workspace/Patton
+git pull --ff-only origin patent
+bash src/run_partner_teacher.sh dense1 dense-hard
+```
+
+它复用现有向量和dense run1/best.pt，自动后台运行；不覆盖teacher/run1。先打印train候选覆盖/分数/正例边界审计，再训练mean和attention。挖候选不使用val/test。查看日志：
+
+```bash
+tail -f /workspace/Patton/logs/partner_v2/teacher_dense1.log
+```
+
+完成后回传：
+
+```bash
+cat /workspace/Patton/ckpt/partner_teacher/dense1/comparison.json
+```
+
+保存 `training_candidates.jsonl`、`candidate_audit.json` 及其指纹；原canonical文件不改。新运行额外保留每头的last.pt和参数变化范数，末轮权重仅供诊断，不能绕过best.pt的验证集选择。新旧两次比较回答的是本次“词法困难项→稠密困难项”策略是否改善结果，单seed不能证明普遍增益。
+
+若仍未超过原投影，继续停止压缩蒸馏，先重新评估教师路线。当前仅准备了该干预入口，尚未获得其真实4090结果。

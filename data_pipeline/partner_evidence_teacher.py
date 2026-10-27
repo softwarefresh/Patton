@@ -19,6 +19,7 @@ import partner_dense_baseline as dense
 from partner_evidence_dataset import EvidenceDataset, integer, require
 from partner_evidence_max_baseline import CompleteEvidenceVectors
 from partner_evidence_teacher_model import EvidenceInteractionTeacher
+from partner_teacher_candidates import build_dense_training_candidates
 
 
 FORMAT = "partner_evidence_residual_teacher_v1"
@@ -129,11 +130,13 @@ def make_model(weight, args, mode, device):
                                      residual_scale=args.residual_scale).to(device)
 
 
-def snapshot(path, model, configuration, epoch, metrics):
+def snapshot(path, model, configuration, epoch, metrics, role="validation_best"):
     # Never migrate the live model after constructing its optimizer.
     saved_weights = {name: value.detach().cpu().clone() for name, value in model.state_dict().items()}
     torch.save({"format": FORMAT, "configuration": configuration, "mode": configuration["mode"],
-                "selected_epoch": epoch, "selection_split": "val", "validation": metrics,
+                "epoch": epoch, "checkpoint_role": role,
+                "selected_epoch": epoch if role == "validation_best" else None,
+                "selection_split": "val" if role == "validation_best" else None, "validation": metrics,
                 "state_dict": saved_weights}, path)
 
 
@@ -182,6 +185,7 @@ def preflight(weight, training, validation, args, device, base_model):
 def train_variant(mode, weight, training, validation, training_device, args, config, baseline, output, device):
     dense.set_seed(args.seed)  # Equal initial parameters and query order for both controls.
     model = make_model(weight, args, mode, device)
+    initial_parameters = {name: value.detach().clone() for name, value in model.named_parameters()}
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
     config = dict(config, mode=mode, trainable_parameters=sum(p.numel() for p in model.parameters()))
     destination = output / mode
@@ -239,11 +243,20 @@ def train_variant(mode, weight, training, validation, training_device, args, con
         dense.write_json(destination / "history.json", history)
         log(stage="epoch", mode=mode, **record)
     require(torch.equal(model.base_weight.cpu(), weight), "Frozen base projection changed")
+    # Diagnostic snapshot only; best.pt remains validation-selected, including epoch zero.
+    snapshot(destination / "last.pt", model, config, args.epochs, history[-1]["validation"], role="diagnostic_last")
+    with torch.no_grad():
+        parameter_delta = sum((value - initial_parameters[name]).square().sum()
+                              for name, value in model.named_parameters()).sqrt().item()
     selected = history[best_epoch]["validation"]
     summary = {"mode": mode, "best_epoch": best_epoch, "best_validation": selected,
                "trained_residual_selected": best_epoch > 0, "base_projection_frozen": True,
                "trainable_parameters": config["trainable_parameters"],
-               "best_checkpoint": dense.fingerprint(destination / "best.pt"), "test_accessed": False}
+               "best_checkpoint": dense.fingerprint(destination / "best.pt"),
+               "last_checkpoint": dense.fingerprint(destination / "last.pt"),
+               "last_checkpoint_role": "diagnostic_only_not_validation_selection",
+               "final_epoch": args.epochs, "final_validation": history[-1]["validation"],
+               "head_parameter_delta_l2": parameter_delta, "test_accessed": False}
     dense.write_json(destination / "training_summary.json", summary)
     return summary
 
@@ -255,6 +268,8 @@ def train_pair(args):
     for name in ("lr", "temperature", "attention_temperature", "residual_scale"):
         require(math.isfinite(getattr(args, name)) and getattr(args, name) > 0, "Invalid positive value: " + name)
     require(math.isfinite(args.weight_decay) and args.weight_decay >= 0, "Invalid weight decay")
+    candidate_mode = getattr(args, "candidate_mode", "canonical")
+    require(candidate_mode in ("canonical", "dense-hard"), "Unsupported training candidate mode")
     output = Path(args.output_dir).resolve()
     require(not output.exists(), "Refusing existing teacher output; choose a fresh run directory")
     device = dense.choose_device(args.device)
@@ -276,6 +291,7 @@ def train_pair(args):
         "selection_split": "val", "selection_metric": "recall@100", "test_accessed": False,
         "innovation_model": False, "fixed_index_budget_comparison": False,
         "candidate_protocol": "same_canonical_all_known_positives_plus_hard_and_random_unobserved_items",
+        "candidate_mode": candidate_mode, "derived_candidate_fingerprint": None,
         "training_query_count": len(training.query_ids), "validation_query_count": len(validation.query_ids),
         "validation_candidate_count": len(validation.doc_ids), "dimension": len(weight),
         "seed": args.seed, "epochs": args.epochs, "batch_size": args.batch_size,
@@ -285,7 +301,8 @@ def train_pair(args):
         "gradient_clip_norm": 1.0, "eval_query_batch_size": args.eval_batch_size,
         "eval_candidate_batch_size": args.candidate_batch_size, "torch_version": str(torch.__version__),
         "code_fingerprints": {name: dense.fingerprint(Path(__file__).with_name(name)) for name in
-                              ("partner_evidence_teacher.py", "partner_evidence_teacher_model.py")}}
+                              ("partner_evidence_teacher.py", "partner_evidence_teacher_model.py",
+                               "partner_teacher_candidates.py")}}
     output.mkdir(parents=True)
     dense.write_json(output / "run_config.json", configuration)
     base_model = dense.Projection(len(weight))
@@ -298,6 +315,30 @@ def train_pair(args):
                     input_fingerprints=validation.fingerprints)
     dense.write_json(output / "base.val.json", baseline)
     log(stage="base_validation", **baseline)
+    candidate_audit = None
+    if candidate_mode == "dense-hard":
+        log(stage="mining_training_only_dense_candidates")
+        new_pairs, candidate_audit, candidate_records = build_dense_training_candidates(
+            training, args.data_dir, base_model, device)
+        candidate_path = output / "training_candidates.jsonl"
+        with candidate_path.open("x", encoding="utf-8", newline="\n") as stream:
+            for row in candidate_records:
+                stream.write(json.dumps(row, ensure_ascii=False, allow_nan=False) + "\n")
+        configuration["candidate_protocol"] = (
+            "same_budget_replace_canonical_bm25_hard_with_frozen_base_dense_hard_keep_original_random_and_all_positives")
+        configuration["derived_candidate_fingerprint"] = dense.fingerprint(candidate_path)
+        candidate_audit["derived_candidate_fingerprint"] = configuration["derived_candidate_fingerprint"]
+        candidate_audit["base_checkpoint"] = base_signature
+        candidate_audit["embedding_manifest_sha256"] = store.manifest_sha256
+        candidate_audit["source_fingerprints"] = training.fingerprints
+        candidate_audit["bounded_residual_per_candidate"] = args.residual_scale
+        candidate_audit["maximum_pairwise_score_shift_from_residual"] = 2 * args.residual_scale
+        candidate_audit["training_temperature"] = args.temperature
+        candidate_audit["maximum_pairwise_logit_shift_from_residual"] = 2 * args.residual_scale / args.temperature
+        dense.write_json(output / "candidate_audit.json", candidate_audit)
+        dense.write_json(output / "run_config.json", configuration)
+        training.pairs = new_pairs
+        log(stage="training_candidate_audit", **candidate_audit)
     smoke = preflight(weight, training, validation, args, device, base_model)
     dense.write_json(output / "preflight.json", smoke)
     del base_model
@@ -321,6 +362,7 @@ def train_pair(args):
                   "decision": "replicate_teacher_before_compression" if beats_base and beats_mean else
                               "stop_compression_and_review_teacher",
                   "statistical_significance_established": False, "multi_seed_stability_established": False,
+                  "candidate_mode": candidate_mode, "candidate_audit": candidate_audit,
                   "test_accessed": False, "innovation_model_trained": False,
                   "elapsed_seconds": round(time.monotonic() - started, 3)}
     dense.write_json(output / "comparison.json", comparison)
@@ -340,6 +382,8 @@ def main():
                           ("attention-temperature", 0.2), ("residual-scale", 0.25)):
         training.add_argument("--" + name, type=float, default=default)
     training.add_argument("--device", default="cuda")
+    training.add_argument("--candidate-mode", choices=("canonical", "dense-hard"), default="canonical",
+                          help="dense-hard replaces only BM25 hard items using the frozen base train pool")
     args = parser.parse_args()
     train_pair(args)
 

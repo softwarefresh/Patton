@@ -1,0 +1,36 @@
+{
+  "date_local": "2026-10-27",
+  "status": "cpu_checks_passed_dense_candidate_intervention_not_run_on_server",
+  "base_git_commit": "a47c9e1",
+  "isolated_source_file_count": 25,
+  "isolated_cpu_test_count": 67,
+  "isolated_cpu_test_elapsed_seconds": 13.604,
+  "candidate_mining_tests": 7,
+  "teacher_integration_tests": 9,
+  "bash_syntax_check_passed": true,
+  "cli_help_passed": true,
+  "test_scope": "CPU fixtures with fake patent encoder and tiny canonical cohorts; verifies actual derived-candidate usage, frozen base/cache, same-budget replacement, validation-only selection and separate diagnostic last snapshot",
+  "new_server_training_or_test_evaluation_performed": false,
+  "files": {
+    "data_pipeline/partner_evidence_teacher.py": {
+      "bytes": 24948,
+      "sha256": "cf238721b1a279f7b813ad97696282a9ca9059adb397a54dad1f00d9ba6e93e0"
+    },
+    "data_pipeline/partner_teacher_candidates.py": {
+      "bytes": 12716,
+      "sha256": "9a03ef122031b26466f40f2a66a396fc3e4354e384737399e2badf78981b4b22"
+    },
+    "tests/test_partner_evidence_teacher.py": {
+      "bytes": 23566,
+      "sha256": "e7582107d43dbd7f459f3e2aa5196a2e746aee29b5e3128753c62f4cdd6dc724"
+    },
+    "tests/test_partner_teacher_candidates.py": {
+      "bytes": 8611,
+      "sha256": "8b331d5f8fe9b92fd9c421d82cb6e6da1ea8494ad38055b1f83e4eed824b2f65"
+    },
+    "src/run_partner_teacher.sh": {
+      "bytes": 1778,
+      "sha256": "0689411d60d5144a35c4290d39e4fbe66223183542d2e62053d4d2f80fb194d9"
+    }
+  }
+}
