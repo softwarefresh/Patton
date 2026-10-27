@@ -640,13 +640,28 @@ def summary_markdown(payload):
         "- 候选数：{}".format(payload["candidate_count"]),
         "- 正例数：{}".format(payload["positive_count"]),
         "- 候选证据向量：{}（每企业至多 20）".format(payload["evidence_vector_count"]),
+        "- 查询表示：{}".format(payload.get("query_pooling", "n/a")),
         "- embedding manifest：`{}`".format(payload["embedding_manifest_sha256"]),
+        "",
+        "## 基线复现",
+        "",
+    ]
+    checks = payload.get("baseline_reproduction", [])
+    if not checks:
+        lines.append("- 未提供基线复现检查。")
+    for check in checks:
+        lines.append(
+            "- {}：actual={} expected={} passed={}".format(
+                check["label"], fmt(check["actual"], 8), fmt(check["expected"], 8), check["passed"],
+            )
+        )
+    lines.extend([
         "",
         "## 主表",
         "",
         "| 表示 | 聚合 | R@20 | R@100 | Hit@100 | 少数方向正例召回 | 多数方向正例召回 | Top100 平均专利数 |",
         "|---|---|---:|---:|---:|---:|---:|---:|",
-    ]
+    ])
     for representation, entry in payload["representations"].items():
         keep = ["max", "top2", entry["best_softmax_variant"]]
         for variant in keep:
