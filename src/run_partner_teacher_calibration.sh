@@ -4,14 +4,20 @@ set -o noclobber
 PROJ_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$PROJ_DIR"
 RUN_NAME="${1:-dense1}"
+CHECK_TAG="${2:-}"
 if [[ ! "$RUN_NAME" =~ ^[A-Za-z0-9_-]+$ ]]; then
     printf 'Use a run name containing letters, digits, underscores or dashes.\n' >&2
     exit 1
 fi
+if [[ -n "$CHECK_TAG" && ! "$CHECK_TAG" =~ ^[A-Za-z0-9_-]+$ ]]; then
+    printf 'Use a check tag containing letters, digits, underscores or dashes.\n' >&2
+    exit 1
+fi
+CHECK_SUFFIX="${CHECK_TAG:+_$CHECK_TAG}"
 PYTHON_BIN="$PROJ_DIR/.venv_partner4090/bin/python"
 RUN_DIR="$PROJ_DIR/ckpt/partner_teacher/$RUN_NAME"
-OUTPUT_FILE="$PROJ_DIR/logs/partner_v2/teacher_${RUN_NAME}.calibration.val.json"
-LOG_FILE="$PROJ_DIR/logs/partner_v2/teacher_${RUN_NAME}.calibration.log"
+OUTPUT_FILE="$PROJ_DIR/logs/partner_v2/teacher_${RUN_NAME}.calibration${CHECK_SUFFIX}.val.json"
+LOG_FILE="$PROJ_DIR/logs/partner_v2/teacher_${RUN_NAME}.calibration${CHECK_SUFFIX}.log"
 if [[ ! -x "$PYTHON_BIN" || ! -f "$RUN_DIR/mean/last.pt" || ! -f "$RUN_DIR/attention/last.pt" ]]; then
     printf 'The existing environment and both diagnostic last.pt files are required.\n' >&2
     exit 1

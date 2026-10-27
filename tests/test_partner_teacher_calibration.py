@@ -29,6 +29,107 @@ METRICS = ("recall@20", "recall@100", "Hit@100", "P@1", "MRR@100")
 
 
 class ResidualScaleScoringTests(unittest.TestCase):
+    def test_original_base_uses_whole_documents_and_default_32_query_batches(self):
+        generator = torch.Generator().manual_seed(904)
+        dimension, query_count, candidate_count = 4, 65, 109
+        split = SimpleNamespace(
+            split="val", doc_ids=list(range(candidate_count)),
+            query_ids=["q{:03d}".format(index) for index in range(query_count)],
+            documents=torch.randn(candidate_count, dimension, generator=generator),
+            queries=torch.randn(query_count, dimension, generator=generator))
+        weight = torch.eye(dimension) + torch.randn(dimension, dimension, generator=generator) * 0.05
+        before = (split.documents.clone(), split.queries.clone(), weight.clone())
+        calls = []
+        original_forward = dense.Projection.forward
+
+        def traced_forward(model, values):
+            calls.append(tuple(values.shape))
+            return original_forward(model, values)
+
+        with patch.object(dense.Projection, "forward", traced_forward):
+            reference = calibration.original_base_scores(split, weight, torch.device("cpu"))
+        self.assertEqual(calls, [(109, 4), (32, 4), (32, 4), (1, 4)])
+        self.assertIsInstance(reference, np.ndarray)
+        self.assertEqual(reference.shape, (query_count, candidate_count))
+        self.assertEqual(reference.dtype, np.float32)
+        independent_model = dense.Projection(dimension)
+        independent_model.load_state_dict({"linear.weight": weight})
+        with torch.inference_mode():
+            documents = independent_model(split.documents)
+            independent = np.concatenate([
+                (independent_model(split.queries[start:start + 32]) @ documents.T).numpy()
+                for start in range(0, query_count, 32)], axis=0)
+        np.testing.assert_array_equal(reference, independent)
+        for original, current in zip(before, (split.documents, split.queries, weight)):
+            torch.testing.assert_close(original, current, rtol=0, atol=0)
+
+    def test_supplied_dense_reference_preserves_near_ties_and_is_not_recomputed(self):
+        # This deliberately injected CPU perturbation demonstrates why the
+        # projection/GEMM batch path matters. It does not reproduce or verify
+        # the user's real CUDA rounding discrepancy.
+        query_count, candidate_count = 65, 109
+        documents = torch.tensor([[-1., 0.]]).repeat(candidate_count, 1)
+        documents[0] = torch.tensor([0.8, 0.6])
+        documents[1] = torch.tensor([0.8, -0.6])
+        qids = ["q{:03d}".format(index) for index in range(query_count)]
+        split = SimpleNamespace(
+            split="val", doc_ids=list(range(candidate_count)), query_ids=qids,
+            documents=documents, queries=torch.tensor([[1., 0.]]).repeat(query_count, 1),
+            evidence=documents.unsqueeze(1).clone(), mask=torch.ones(candidate_count, 1, dtype=torch.bool),
+            targets={qid: {1} for qid in qids}, excluded={qid: set() for qid in qids})
+        weight = torch.eye(2)
+        original_forward = dense.Projection.forward
+
+        def batch_sensitive_forward(model, values):
+            result = original_forward(model, values)
+            if values.shape[0] <= query_count:
+                result = result.clone()
+                # Query chunks of 32/1 get one rounding direction; the former
+                # all-queries-at-once path receives the opposite direction.
+                result[:, 1] += 1.e-7 if values.shape[0] <= 32 else -1.e-7
+                result = torch.nn.functional.normalize(result, dim=-1)
+            return result
+
+        with patch.object(dense.Projection, "forward", batch_sensitive_forward):
+            reference = calibration.original_base_scores(split, weight, torch.device("cpu"))
+            base_model = dense.Projection(2)
+            base_model.load_state_dict({"linear.weight": weight})
+            expected, _ = dense.evaluate_split(base_model, split, torch.device("cpu"))
+            with torch.inference_mode():
+                all_query_scores = (base_model(split.queries) @ base_model(split.documents).T).numpy()
+        self.assertTrue((reference[:, 0] > reference[:, 1]).all())
+        self.assertTrue((all_query_scores[:, 1] > all_query_scores[:, 0]).all())
+        self.assertLess(float(np.max(np.abs(reference - all_query_scores))), 1.e-6)
+        wrong_rankings = {
+            qid: [split.doc_ids[index] for index in np.argsort(-all_query_scores[position], kind="stable")[:100]]
+            for position, qid in enumerate(qids)}
+        wrong = dense.ranking_metrics(wrong_rankings, split.targets)
+        self.assertEqual(expected["MRR@100"], 0.5)
+        self.assertEqual(wrong["MRR@100"], 1.)
+        model = EvidenceInteractionTeacher(weight, hidden_dim=3, mlp_hidden=4)
+        last_metrics, _ = teacher.evaluate_split(model, split, torch.device("cpu"), 8, 13)
+        feature_before = tuple(value.clone() for value in
+                               (split.documents, split.queries, split.evidence, split.mask, model.base_weight))
+        reference_before = reference.copy()
+        reference.flags.writeable = False
+        with patch.object(calibration, "original_base_scores", side_effect=AssertionError("Reference recomputed")):
+            reports, _ = calibration.evaluate_scales(
+                model, split, torch.device("cpu"), query_batch_size=8, candidate_batch_size=13,
+                base_scores_reference=reference)
+        for metric in METRICS:
+            self.assertEqual(reports["0.0"][metric], expected[metric])
+            self.assertEqual(reports["1.0"][metric], last_metrics[metric])
+        np.testing.assert_array_equal(reference, reference_before)
+        for original, current in zip(feature_before,
+                (split.documents, split.queries, split.evidence, split.mask, model.base_weight)):
+            torch.testing.assert_close(original, current, rtol=0, atol=0)
+        # The exact observed discrepancy must still fail the unchanged strict
+        # endpoint control, rather than being hidden by a looser tolerance.
+        recorded = dict(reports["0.0"], **{"MRR@100": 0.029681499497425247})
+        changed = dict(recorded, **{"MRR@100": 0.029681688489332142})
+        with self.assertRaisesRegex(ValueError, "control_mismatch"):
+            calibration._check_controls(changed, recorded, "observed CUDA MRR discrepancy")
+
     def test_zero_and_one_endpoints_match_dense_and_teacher_with_chunking(self):
         generator = torch.Generator().manual_seed(481)
         evidence = torch.randn(109, 3, 4, generator=generator)
@@ -163,8 +264,10 @@ class ResidualCalibrationPipelineTests(unittest.TestCase):
         with patch.object(torch.optim, "AdamW", side_effect=AssertionError("No calibration optimizer")), \
                 patch.object(dense, "train", side_effect=AssertionError("No baseline retraining")), \
                 patch.object(teacher, "train_pair", side_effect=AssertionError("No teacher retraining")), \
+                patch.object(calibration, "original_base_scores", wraps=calibration.original_base_scores) as reference_builder, \
                 patch.object(Path, "open", guarded_open), contextlib.redirect_stdout(io.StringIO()):
             calibration.run(args)
+        self.assertEqual(reference_builder.call_count, 1)
         self.assertEqual(before, {name: dense.fingerprint(Path(name)) for name in before})
         report = dense.read_json(args.output)
         self.assertEqual(report["status"], "completed")

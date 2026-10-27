@@ -1,0 +1,25 @@
+{
+  "date_local": "2026-10-27",
+  "provenance": "User-pasted server calibration traceback; no completed calibration result produced",
+  "status": "alpha_zero_control_mismatch",
+  "mode": "mean",
+  "metric": "MRR@100",
+  "actual": 0.029681688489332142,
+  "expected": 0.029681499497425247,
+  "difference": 1.8899190689508627e-07,
+  "failed_code_commit": "12ebc88",
+  "diagnosis": "Base scoring path differs: calibration projected candidates in chunks and all queries together, then used B8xC512 matmul; recorded dense baseline projected the full candidate pool, each query batch of 32, and used B32xAllCandidates matmul. Float32 path-dependent rounding is the leading explanation, not independently reproduced on the server.",
+  "fix": "Independently cache base scores using the exact original dense projection/normalization/matmul shapes, reuse for both heads and all scales; retain the teacher last-score path and strict endpoint checks.",
+  "endpoint_tolerance_changed": false,
+  "same_predeclared_alphas": [
+    0.0,
+    0.01,
+    0.03,
+    0.1,
+    0.3,
+    1.0
+  ],
+  "new_training_or_test_evaluation_performed": false,
+  "server_fix_verified": false,
+  "retry_output_tag": "basepath"
+}

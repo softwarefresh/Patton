@@ -327,3 +327,31 @@ cat /workspace/Patton/logs/partner_v2/teacher_dense1.calibration.val.json
 ```
 
 报告的最佳alpha是在val上选出的探索性结果，不是独立验证或显著性结论。若所有非零档均未超过基础R100，关闭当前教师实现路线；若小档有收益，只能说明有校准线索，仍不据此启动压缩蒸馏。原始best.pt保持不动。
+
+## 14. 首次校准的alpha0 MRR微差：更新后带新标签重试
+
+第一次校准在mean alpha0被严格控制拦截：MRR相差约1.89e-7，没有写入完成报告。基线两处实现采用了不同的投影批次和矩阵形状，浮点舍入可能改变接近并列的顺序。现已让0%分数完整复用原dense的“候选整池投影、查询32条投影、32×全池评分”路径；末轮教师的原计算路径不变，严格容差保持1e-10。
+
+已有失败日志会被保留，使用新标签运行：
+
+```bash
+cd /workspace/Patton
+git pull --ff-only origin patent
+bash src/run_partner_teacher_calibration.sh dense1 basepath
+```
+
+查看：
+
+```bash
+tail -f /workspace/Patton/logs/partner_v2/teacher_dense1.calibration_basepath.log
+```
+
+先应出现 `checking_original_base_scoring_path` 和 `original_base_control_passed`，再进入mean/attention。如果仍不一致，程序仍会报错并打印actual/expected，不放宽标准。
+
+完成后回传：
+
+```bash
+cat /workspace/Patton/logs/partner_v2/teacher_dense1.calibration_basepath.val.json
+```
+
+本次仅校准脚本路径修正，没有新训练、编码或test评测。CPU检查不能代替服务器真实GPU端点复现。

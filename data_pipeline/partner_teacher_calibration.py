@@ -26,6 +26,7 @@ METRICS = ("recall@20", "recall@100", "Hit@100", "P@1", "MRR@100")
 COUNTS = ("query_count", "candidate_count", "positive_count")
 SAMPLE_SEED = 0
 SAMPLES_PER_QUERY = 128
+REFERENCE_QUERY_BATCH_SIZE = 32
 
 
 def _summary(values):
@@ -40,10 +41,49 @@ def _summary(values):
             "median": float(quantiles[2]), "q75": float(quantiles[3]), "max": float(quantiles[4])}
 
 
-def evaluate_scales(model, split, device, query_batch_size=8, candidate_batch_size=512):
+def original_base_scores(split, base_weight, device):
+    """Replay dense.evaluate_split's exact projection and GEMM shapes.
+
+    Float32 rounding can depend on batch dimensions before stable sorting.
+    Candidates must be projected as one full pool and queries in batches of
+    32, including the original last-batch size. The CPU cache is shared by both
+    diagnostic heads; their last-checkpoint path remains independently intact.
+    """
+    model = dense.Projection(len(base_weight))
+    model.load_state_dict({"linear.weight": base_weight})
+    model.to(device).eval().requires_grad_(False)
+    scores = np.empty((len(split.query_ids), len(split.doc_ids)), dtype=np.float32)
+    with torch.inference_mode():
+        documents = model(split.documents.to(device))
+        require(bool(torch.isfinite(documents).all()), "Nonfinite reference candidate vectors")
+        for start in range(0, len(split.query_ids), REFERENCE_QUERY_BATCH_SIZE):
+            stop = start + REFERENCE_QUERY_BATCH_SIZE
+            queries = model(split.queries[start:stop].to(device))
+            values = (queries @ documents.T).cpu().numpy()
+            require(bool(np.isfinite(values).all()), "Nonfinite reference base scores")
+            scores[start:start + len(values)] = values
+    return scores
+
+
+def _base_metrics(scores, split):
+    rankings = {}
+    for offset, qid in enumerate(split.query_ids):
+        allowed = np.array([position for position, doc_id in enumerate(split.doc_ids)
+                            if doc_id not in split.excluded[qid]], dtype=np.int64)
+        order = allowed[np.argsort(-scores[offset, allowed], kind="stable")[:100]]
+        rankings[qid] = [split.doc_ids[position] for position in order]
+    metrics = dense.ranking_metrics(rankings, split.targets)
+    metrics.update(split="val", query_count=len(split.query_ids), candidate_count=len(split.doc_ids),
+                   positive_count=sum(len(gold) for gold in split.targets.values()),
+                   evaluation_candidate_pool="all_allowed_documents", gold_used_for_scoring=False)
+    return metrics
+
+
+def evaluate_scales(model, split, device, query_batch_size=8, candidate_batch_size=512,
+                    base_scores_reference=None):
     """Score each pair once and compare the fixed scales on the complete pool.
 
-    Only one query batch's full base/last score matrices live on the CPU.
+    The original base score cache lives on the CPU, plus one last-score batch.
     Residual means, standard deviation and maximum use every allowed pair;
     absolute quantiles use fixed-seed per-query uniform samples without gold.
     """
@@ -55,6 +95,12 @@ def evaluate_scales(model, split, device, query_batch_size=8, candidate_batch_si
     require(set(split.query_ids) == set(split.targets) == set(split.excluded), "Query/target/exclusion IDs differ")
     require(split.queries.shape[0] == len(split.query_ids) and split.evidence.shape[0] == len(split.doc_ids) and
             split.documents.shape[0] == len(split.doc_ids), "Calibration feature counts differ")
+    if base_scores_reference is None:
+        base_scores_reference = original_base_scores(split, model.base_weight, device)
+    require(isinstance(base_scores_reference, np.ndarray) and
+            base_scores_reference.shape == (len(split.query_ids), len(split.doc_ids)) and
+            base_scores_reference.dtype == np.float32 and bool(np.isfinite(base_scores_reference).all()),
+            "Invalid original base score cache")
     rankings = {str(alpha): {} for alpha in ALPHAS}
     sample_rng = np.random.default_rng(SAMPLE_SEED)
     sampled_absolute, base_boundary_scores = [], []
@@ -73,14 +119,12 @@ def evaluate_scales(model, split, device, query_batch_size=8, candidate_batch_si
         for start in range(0, len(split.query_ids), query_batch_size):
             qids = split.query_ids[start:start + query_batch_size]
             queries = tuple(value[start:start + len(qids)] for value in all_queries)
-            base_scores = np.empty((len(qids), len(split.doc_ids)), dtype=np.float32)
+            base_scores = base_scores_reference[start:start + len(qids)]
             last_scores = np.empty_like(base_scores)
             for candidate_start in range(0, len(split.doc_ids), candidate_batch_size):
                 stop = candidate_start + candidate_batch_size
                 prepared = tuple(value[candidate_start:stop] for value in candidates)
                 last = model.score_prepared(queries, prepared)
-                base = queries[0] @ prepared[0].T
-                base_scores[:, candidate_start:stop] = base.cpu().numpy()
                 last_scores[:, candidate_start:stop] = last.cpu().numpy()
             require(bool(np.isfinite(base_scores).all()) and bool(np.isfinite(last_scores).all()),
                     "Nonfinite calibration scores")
@@ -137,6 +181,8 @@ def evaluate_scales(model, split, device, query_batch_size=8, candidate_batch_si
              "base_top100_boundary_score": _summary(base_boundary_scores),
              "boundary_definition": "min(100,allowed_count)th_base_score_for_each_query",
              "gold_used_for_residual_or_boundary_statistics": False}
+    stats["residual_definition"] = (
+        "recorded_last_path_score_minus_original_dense_base_path_score_including_float32_path_roundoff")
     return reports, stats
 
 
@@ -277,13 +323,20 @@ def run(args):
     require(configuration.get("base_checkpoint") == base_signature and
             configuration.get("base_selected_epoch") == base_saved["selected_epoch"], "Base checkpoint fingerprint/epoch mismatch")
     derived = _validate_candidates(configuration, comparison, run_dir, base_signature, store)
+    print(json.dumps({"stage": "checking_original_base_scoring_path",
+                      "query_batch_size": REFERENCE_QUERY_BATCH_SIZE,
+                      "candidate_count": len(split.doc_ids)}), flush=True)
+    reference = original_base_scores(split, weight, device)
+    _check_controls(_base_metrics(reference, split), comparison["base_validation"], "original base path")
+    print(json.dumps({"stage": "original_base_control_passed"}), flush=True)
     variants = {}
     for mode in ("mean", "attention"):
         print(json.dumps({"stage": "calibrating_existing_last_checkpoint", "mode": mode,
                           "split": "val", "fixed_grid": list(ALPHAS)}), flush=True)
         model, signature, expected_last = _load_head(mode, configuration, comparison, run_dir, weight)
         model.to(device).eval().requires_grad_(False)
-        scales, residual_stats = evaluate_scales(model, split, device, args.batch_size, args.candidate_batch_size)
+        scales, residual_stats = evaluate_scales(model, split, device, args.batch_size, args.candidate_batch_size,
+                                                 base_scores_reference=reference)
         _check_controls(scales["0.0"], comparison["base_validation"], mode + " alpha=0")
         _check_controls(scales["1.0"], expected_last, mode + " alpha=1")
         best_alpha = 0.0
@@ -303,6 +356,9 @@ def run(args):
     report = {"status": "completed", "format": FORMAT, "split": "val", "validation_exploratory": True,
               "no_training": True, "test_accessed": False, "weights_modified": False, "checkpoints_written": False,
               "fixed_grid": list(ALPHAS), "grid_selected_before_evaluation": True, "variants": variants,
+              "base_score_path": "dense_projection_full_pool_and_query_batches_of_32",
+              "base_reference_cpu_bytes": int(reference.nbytes),
+              "last_score_path": "original_teacher_projection_and_scoring_chunks",
               "base_validation": comparison["base_validation"], "base_checkpoint": base_signature,
               "embedding_manifest_sha256": store.manifest_sha256, "input_fingerprints": split.fingerprints,
               "derived_candidate_fingerprint": derived, "candidate_mode": configuration["candidate_mode"],
